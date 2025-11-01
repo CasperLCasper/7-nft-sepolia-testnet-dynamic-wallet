@@ -454,22 +454,20 @@ async function startRecording(includeTokens=false) {
     if(startRecording._recording) return;
     startRecording._recording = true;
 
-    // Saglabā sākotnējo showInfo vērtību
-    const previousShowInfo = showInfo;
+    const previousShowInfo = showInfo; // Saglabā sākotnējo canvas info
+    showInfo = !includeTokens; // Video laikā, ja nav token saraksta, info pazūd
 
-    // Ierakstam disable SepoliaETH, Tx
-    showInfo = false;
-
-    // Ja vajag token sarakstu video, parādi to
+    // Ja vajag token sarakstu video
     if(includeTokens) {
         tokenListContainer.style.display = 'block';
         document.getElementById('infoText').textContent = 'Info';
+    } else {
+        tokenListContainer.style.display = 'none';
     }
 
-    // Sagatavo animāciju
     stopAnimation();
     particles = cloneParticles();
-    drawFrame(0, true);
+    drawFrame(0, !includeTokens); // drawFrame(showTokensFrame) — false, ja negribi bilanci video
 
     statusMsg.textContent = 'Preparing recording...';
     recordBtn.disabled = true;
@@ -529,7 +527,7 @@ async function startRecording(includeTokens=false) {
         a.click();
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 
-        // Atjauno sākotnējo showInfo vērtību
+        // Atjauno sākotnējo showInfo canvas
         showInfo = previousShowInfo;
         document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
         tokenListContainer.style.display = showInfo ? 'block' : 'none';
@@ -559,8 +557,9 @@ async function startRecording(includeTokens=false) {
     }
 }
 
-// Event listener pogai “Record”
-recordBtn.addEventListener('click', () => startRecording(true)); // true = parāda token sarakstu video
+// Poga “Record”
+recordBtn.addEventListener('click', () => startRecording(false)); // false = video bez bilances
+
 
 
   </script>
