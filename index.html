@@ -410,10 +410,10 @@ async function renderSnapshot() {
     }
 
     // ✅ Dati gatavi — uzstādi progresu uz 100%, parādi gala statusu un pazūd progressBar
-    running = false; // aptur animāciju
-    progressBar.style.transform = 'scaleX(1)'; // aizpilda pilnībā
-    setTimeout(() => hideProgressSmooth(), 100); // pazūd uzreiz pēc aizpildīšanas
-    statusMsg.textContent = 'Visualization running!';
+   running = false; // aptur animāciju
+progressBar.style.transform = 'scaleX(1)'; // aizpilda pilnībā
+statusMsg.textContent = 'Visualization running!'; // rāda statusu
+hideProgressSmooth(); // tikai šeit progressBar pazūd
   } catch (e) {
     running = false;
     hideProgressSmooth();
