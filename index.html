@@ -120,8 +120,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <script>
-    
-    // ==== Responsive Canvas ====
+    // ===== Responsive Canvas & Mobile Scaling =====
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     const canvas = document.getElementById('snapshotCanvas');
     const ctx = canvas.getContext('2d');
@@ -167,7 +166,7 @@
 
     // ===== Helpers =====
     function showProgressSmooth(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; }
-    function hideProgressSmooth(){ progressBar.style.transform='scaleX(1)'; setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
+    function hideProgressSmooth(){ progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)'; }
 
     // ===== Seeded random =====
     function hashStringToInt(str, modulo = 1000) {
@@ -257,7 +256,7 @@
       tokens.forEach(t=>{
         const tr = document.createElement('tr');
         const addrTd = document.createElement('td');
-        addrTd.textContent = t.address;
+                addrTd.textContent = t.address;
         addrTd.title = t.address;
         const balTd = document.createElement('td');
         balTd.textContent = t.balance.toFixed(4);
@@ -361,73 +360,74 @@
       }
     }
 
-// ===== Render Snapshot =====
-async function renderSnapshot() {
-  if (!account) await connectWallet();
-  if (!provider || !account) {
-    statusMsg.textContent = 'Wallet not connected.';
-    return;
-  }
+    // ===== Render Snapshot =====
+    async function renderSnapshot() {
+      if (!account) await connectWallet();
+      if (!provider || !account) {
+        statusMsg.textContent = 'Wallet not connected.';
+        return;
+      }
 
-  stopAnimation();
-  showProgressSmooth();
-  progressBar.style.transform = 'scaleX(0)'; // sāk no 0
-  statusMsg.textContent = '';
+      stopAnimation();
+      showProgressSmooth();
+      progressBar.style.transform = 'scaleX(0)'; // sāk no 0
+      statusMsg.textContent = '';
 
-  let progress = 0;
-  let running = true;
+      let progress = 0;
+      let running = true;
 
-  // Simulē gludu progressBar kustību
-  function animateProgress() {
-    if (!running) return;
-    // palielina progresu mazā solī
-    progress = Math.min(progress + 0.005, 0.99); // neaizpildās līdz 1, gaidot datus
-    progressBar.style.transform = `scaleX(${progress})`;
-    requestAnimationFrame(animateProgress);
-  }
-  requestAnimationFrame(animateProgress);
+      // Simulē gludu progressBar kustību
+      function animateProgress() {
+        if (!running) return;
+        progress = Math.min(progress + 0.005, 0.99);
+        progressBar.style.transform = `scaleX(${progress})`;
+        requestAnimationFrame(animateProgress);
+      }
+      requestAnimationFrame(animateProgress);
 
-  try {
-    // 1️⃣ ETH bilance un transakcijas
-    const balanceBig = await provider.getBalance(account);
-    ethBalance = Number(ethers.formatEther(balanceBig)) || 0;
-    txCount = Number(await provider.getTransactionCount(account)) || 0;
+      try {
+        // 1️⃣ ETH bilance un transakcijas
+        const balanceBig = await provider.getBalance(account);
+        ethBalance = Number(ethers.formatEther(balanceBig)) || 0;
+        txCount = Number(await provider.getTransactionCount(account)) || 0;
 
-    // 2️⃣ Tokeni un NFT
-    const fetchedTokens = await getTokens();
-    const fetchedNFTs = await getAllNFTs();
-    tokens = [...fetchedTokens, ...fetchedNFTs];
+        // 2️⃣ Tokeni un NFT
+        const fetchedTokens = await getTokens();
+        const fetchedNFTs = await getAllNFTs();
+        tokens = [...fetchedTokens, ...fetchedNFTs];
 
-    // 3️⃣ Vizualizācijas inicializācija
-    await initParticlesOnce();
-    particles = cloneParticles();
-    animate();
+        // 3️⃣ Vizualizācijas inicializācija
+        await initParticlesOnce();
+        particles = cloneParticles();
+        animate();
 
-    // 4️⃣ Atjauno tokenu sarakstu
-    if (showInfo) {
-      tokenListContainer.style.display = 'block';
-      updateTokenListUI();
+        // 4️⃣ Atjauno tokenu sarakstu
+        if (showInfo) {
+          tokenListContainer.style.display = 'block';
+          updateTokenListUI();
+        }
+
+        // ✅ Dati gatavi — uzstādi progresu uz 100%, parādi gala statusu un pazūd progressBar
+        running = false;
+        progressBar.style.transform = 'scaleX(1)';
+        statusMsg.textContent = 'Visualization running!';
+        setTimeout(hideProgressSmooth, 300); // neliels delay, lai lietotājs redz pilnīgi aizpildītu progressBar
+      } catch (e) {
+        running = false;
+        hideProgressSmooth();
+        console.error('Render error:', e);
+        statusMsg.textContent = 'Error rendering visualization.';
+        alert('Render failed. Check console for details.');
+      }
     }
 
-    // ✅ Dati gatavi — uzstādi progresu uz 100%, parādi gala statusu un pazūd progressBar
-   running = false; // aptur animāciju
-progressBar.style.transform = 'scaleX(1)'; // aizpilda pilnībā
-statusMsg.textContent = 'Visualization running!'; // rāda statusu
-hideProgressSmooth(); // tikai šeit progressBar pazūd
-  } catch (e) {
-    running = false;
-    hideProgressSmooth();
-    console.error('Render error:', e);
-    statusMsg.textContent = 'Error rendering visualization.';
-    alert('Render failed. Check console for details.');
-  }
-}
-
-
-  // ===== Event Listeners =====
+    // ===== Event Listeners =====
     connectBtn.addEventListener('click', connectWallet);
     renderBtn.addEventListener('click', renderSnapshot);
-    fullscreenIcon.addEventListener('click', ()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
+    fullscreenIcon.addEventListener('click', ()=>{ 
+      if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); 
+      else document.exitFullscreen().catch(()=>{}); 
+    });
     toggleInfoIcon.addEventListener('click', ()=>{
       showInfo=!showInfo;
       document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
@@ -436,77 +436,60 @@ hideProgressSmooth(); // tikai šeit progressBar pazūd
     });
 
     // ===== Animation =====
-    function animate(frame=0){ drawFrame(frame,true); animRequest=requestAnimationFrame(()=>animate(frame+1)); }
-    function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
+    function animate(frame=0){ 
+      drawFrame(frame,true); 
+      animRequest=requestAnimationFrame(()=>animate(frame+1)); 
+    }
+    function stopAnimation(){ 
+      if(animRequest) cancelAnimationFrame(animRequest); 
+      animRequest=null; 
+    }
 
-   // ===== Video Recording =====
-function pickSupportedMimeType() {
-    const candidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
-    for(const c of candidates) {
+    // ===== Video Recording =====
+    function pickSupportedMimeType() {
+      const candidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+      for(const c of candidates) {
         try { 
-            if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; 
+          if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; 
         } catch(e) {}
-    }
-    return '';
-}
-
-async function startRecording(includeTokens=false) {
-    if(startRecording._recording) return;
-    startRecording._recording = true;
-
-    // Saglabā sākotnējo showInfo vērtību
-    const previousShowInfo = showInfo;
-
-    // Ierakstam disable SepoliaETH, Tx
-    showInfo = false;
-
-    // Ja vajag token sarakstu video, parādi to
-    if(includeTokens) {
-        tokenListContainer.style.display = 'block';
-        document.getElementById('infoText').textContent = 'Info';
+      }
+      return '';
     }
 
-    // Sagatavo animāciju
-    stopAnimation();
-    particles = cloneParticles();
-    drawFrame(0, true);
+    async function startRecording(includeTokens=false) {
+      if(startRecording._recording) return;
+      startRecording._recording = true;
 
-    statusMsg.textContent = 'Preparing recording...';
-    recordBtn.disabled = true;
-    renderBtn.disabled = true;
-    connectBtn.disabled = true;
-    showProgressSmooth();
-    if(!animRequest) animate();
+      const previousShowInfo = showInfo;
+      showInfo = false;
+      if(includeTokens) { tokenListContainer.style.display = 'block'; document.getElementById('infoText').textContent = 'Info'; }
 
-    let stream;
-    try { 
-        stream = canvas.captureStream(30); 
-    } catch(err) { 
-        statusMsg.textContent = 'Recording not supported.'; 
-        cleanup(); 
-        return; 
-    }
+      stopAnimation();
+      particles = cloneParticles();
+      drawFrame(0, true);
 
-    const mime = pickSupportedMimeType();
-    let recorder;
-    try { 
-        recorder = mime ? new MediaRecorder(stream, {mimeType: mime}) : new MediaRecorder(stream); 
-    } catch(err) { 
-        alert('MediaRecorder not available.'); 
-        cleanup(); 
-        return; 
-    }
+      statusMsg.textContent = 'Preparing recording...';
+      recordBtn.disabled = true; renderBtn.disabled = true; connectBtn.disabled = true;
+      showProgressSmooth();
+      if(!animRequest) animate();
 
-    const chunks = [];
-    recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
-    recorder.onerror = (ev) => { console.error(ev); statusMsg.textContent = 'Recording error.'; };
-    recorder.onstart = () => { statusMsg.textContent = 'Recording...'; };
-    recorder.start();
+      let stream;
+      try { stream = canvas.captureStream(30); } catch(err) { statusMsg.textContent = 'Recording not supported.'; cleanup(); return; }
 
-    const startTime = performance.now();
-    const duration = 20000; // 20 sekundes
+      const mime = pickSupportedMimeType();
+      let recorder;
+      try { recorder = mime ? new MediaRecorder(stream, {mimeType: mime}) : new MediaRecorder(stream); } catch(err) { alert('MediaRecorder not available.'); cleanup(); return; }
 
-    function updateProgress(timestamp) {
+      const chunks = [];
+      recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
+      recorder.onerror = (ev) => { console.error(ev); statusMsg.textContent = 'Recording error.'; };
+      recorder.onstart = () => { statusMsg.textContent = 'Recording...'; };
+      recorder.start();
+
+      const startTime = performance.now();
+      const duration = 20000;
+
+      function updateProgress(timestamp) {
         const elapsed = timestamp - startTime;
         const progress = Math.min(elapsed / duration, 1);
         progressBar.style.transform = `scaleX(${progress})`;
@@ -514,10 +497,10 @@ async function startRecording(includeTokens=false) {
         recordTimer.textContent = `Recording: ${seconds} / 20 s`;
         if(elapsed < duration) requestAnimationFrame(updateProgress);
         else try { recorder.stop(); } catch(e) { console.warn(e); }
-    }
-    requestAnimationFrame(updateProgress);
+      }
+      requestAnimationFrame(updateProgress);
 
-    recorder.onstop = () => {
+      recorder.onstop = () => {
         const blob = new Blob(chunks, { type: chunks.length ? chunks[0].type : 'video/webm' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -529,7 +512,6 @@ async function startRecording(includeTokens=false) {
         a.click();
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 
-        // Atjauno sākotnējo showInfo vērtību
         showInfo = previousShowInfo;
         document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
         tokenListContainer.style.display = showInfo ? 'block' : 'none';
@@ -542,9 +524,9 @@ async function startRecording(includeTokens=false) {
         renderBtn.disabled = false;
         connectBtn.disabled = false;
         startRecording._recording = false;
-    };
+      };
 
-    function cleanup() {
+      function cleanup() {
         try { if(recorder && recorder.state === 'recording') recorder.stop(); } catch(e) {}
         showInfo = previousShowInfo;
         document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
@@ -556,14 +538,12 @@ async function startRecording(includeTokens=false) {
         hideProgressSmooth();
         recordTimer.textContent = 'Recording: 0 / 20 s';
         startRecording._recording = false;
+      }
     }
-}
 
-// Event listener pogai “Record”
-recordBtn.addEventListener('click', () => startRecording(true)); // true = parāda token sarakstu video
-
-
+    recordBtn.addEventListener('click', () => startRecording(true));
   </script>
 </body>
 </html>
 
+        
