@@ -545,6 +545,8 @@ async function startRecording(includeTokens=false) {
     }
 }
 
+recordBtn.addEventListener('click', () => startRecording(true)); // true = parāda token sarakstu uz canvas, bet video tiks tīrs
+    
   </script>
 </body>
 </html>
