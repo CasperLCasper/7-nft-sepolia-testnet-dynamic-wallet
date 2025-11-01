@@ -239,6 +239,12 @@
         ctx.fillStyle=gradient;
         ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
       });
+
+      if(showTokensFrame && showInfo){
+        ctx.fillStyle='#0ff';
+        ctx.font='22px Inter';
+        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}  Tx: ${txCount}`, 10, 80);
+      }
     }
 
     // ===== Token List UI =====
@@ -525,6 +531,54 @@ async function renderSnapshot() {
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
