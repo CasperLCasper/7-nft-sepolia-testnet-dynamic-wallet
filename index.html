@@ -439,7 +439,7 @@ async function renderSnapshot() {
     function animate(frame=0){ drawFrame(frame,true); animRequest=requestAnimationFrame(()=>animate(frame+1)); }
     function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
 
-   // ===== Video Recording =====
+  // ===== Video Recording =====
 function pickSupportedMimeType() {
     const candidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
     for(const c of candidates) {
@@ -457,10 +457,7 @@ async function startRecording(includeTokens=false) {
     // Saglabā sākotnējo showInfo vērtību
     const previousShowInfo = showInfo;
 
-    // Ierakstam disable SepoliaETH, Tx
-    showInfo = false;
-
-    // Ja vajag token sarakstu video, parādi to
+    // Token saraksts video
     if(includeTokens) {
         tokenListContainer.style.display = 'block';
         document.getElementById('infoText').textContent = 'Info';
@@ -561,6 +558,7 @@ async function startRecording(includeTokens=false) {
 
 // Event listener pogai “Record”
 recordBtn.addEventListener('click', () => startRecording(true)); // true = parāda token sarakstu video
+
 
 
   </script>
