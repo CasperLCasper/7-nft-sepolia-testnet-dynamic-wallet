@@ -243,7 +243,7 @@
       if(showTokensFrame && showInfo){
         ctx.fillStyle='#0ff';
         ctx.font='22px Inter';
-        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`);
+        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}  Tx: ${txCount}`, 10, 80);
       }
     }
 
@@ -565,4 +565,4 @@ recordBtn.addEventListener('click', () => startRecording(true)); // true = parā
 
   </script>
 </body>
-</html
+</html>
