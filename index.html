@@ -439,42 +439,7 @@ async function renderSnapshot() {
     function animate(frame=0){ drawFrame(frame,true); animRequest=requestAnimationFrame(()=>animate(frame+1)); }
     function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
 
-// ===== Draw Frame =====
-function drawFrame(frame, showTokensFrame, forVideo=false){
-    const dpr = window.devicePixelRatio || 1;
-    const scale = isMobile ? 0.6 : 1;
-    const W = canvas.width / (dpr*scale);
-    const H = canvas.height / (dpr*scale);
-    ctx.clearRect(0,0,W,H);
-    ctx.fillStyle='#000';
-    ctx.fillRect(0,0,W,H);
-    const cx0 = W/2;
-    const cy0 = H/2;
-
-    // Partiklu zīmēšana
-    particles.forEach(p=>{
-        p.angle += p.speed;
-        const cx = cx0 + Math.cos(p.angle)*p.radius;
-        const cy = cy0 + Math.sin(p.angle)*p.radius;
-        const gradient = ctx.createRadialGradient(cx,cy,0,cx,cy,p.r*2.5);
-        gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
-        gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
-        gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(cx,cy,p.r,0,Math.PI*2);
-        ctx.fill();
-    });
-
-    // ETH bilance uz ekrāna, bet ne video
-    if(showTokensFrame && showInfo && !forVideo){
-        ctx.fillStyle='#0ff';
-        ctx.font='22px Inter';
-        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}  Tx: ${txCount}`, 10, 80);
-    }
-}
-
-// ===== Video Recording =====
+   // ===== Video Recording =====
 function pickSupportedMimeType() {
     const candidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
     for(const c of candidates) {
@@ -489,21 +454,29 @@ async function startRecording(includeTokens=false) {
     if(startRecording._recording) return;
     startRecording._recording = true;
 
+    // Saglabā sākotnējo showInfo vērtību
     const previousShowInfo = showInfo;
 
+    // Ierakstam disable SepoliaETH, Tx
+    showInfo = false;
+
+    // Ja vajag token sarakstu video, parādi to
     if(includeTokens) {
         tokenListContainer.style.display = 'block';
         document.getElementById('infoText').textContent = 'Info';
     }
 
+    // Sagatavo animāciju
     stopAnimation();
     particles = cloneParticles();
+    drawFrame(0, true);
 
     statusMsg.textContent = 'Preparing recording...';
     recordBtn.disabled = true;
     renderBtn.disabled = true;
     connectBtn.disabled = true;
     showProgressSmooth();
+    if(!animRequest) animate();
 
     let stream;
     try { 
@@ -556,6 +529,7 @@ async function startRecording(includeTokens=false) {
         a.click();
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 
+        // Atjauno sākotnējo showInfo vērtību
         showInfo = previousShowInfo;
         document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
         tokenListContainer.style.display = showInfo ? 'block' : 'none';
@@ -568,7 +542,6 @@ async function startRecording(includeTokens=false) {
         renderBtn.disabled = false;
         connectBtn.disabled = false;
         startRecording._recording = false;
-        stopAnimation();
     };
 
     function cleanup() {
@@ -583,19 +556,12 @@ async function startRecording(includeTokens=false) {
         hideProgressSmooth();
         recordTimer.textContent = 'Recording: 0 / 20 s';
         startRecording._recording = false;
-        stopAnimation();
     }
-
-    // ===== Video animācija =====
-    function animateVideo(frame=0){
-        drawFrame(frame, true, true); // forVideo = true -> video ignorē ETH bilanci
-        animRequest = requestAnimationFrame(()=>animateVideo(frame+1));
-    }
-    animateVideo();
 }
 
 // Event listener pogai “Record”
-recordBtn.addEventListener('click', () => startRecording(true));
+recordBtn.addEventListener('click', () => startRecording(true)); // true = parāda token sarakstu video
+
 
   </script>
 </body>
