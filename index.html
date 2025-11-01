@@ -456,25 +456,19 @@ async function startRecording(includeTokens=false) {
 
     const previousShowInfo = showInfo;
 
-    // Token saraksts video
     if(includeTokens) {
         tokenListContainer.style.display = 'block';
         document.getElementById('infoText').textContent = 'Info';
     }
 
-    // Sagatavo animāciju
     stopAnimation();
     particles = cloneParticles();
-
-    // Zīmē pirmo frame ar video flag
-    drawFrame(0, true, true); // forVideo = true
 
     statusMsg.textContent = 'Preparing recording...';
     recordBtn.disabled = true;
     renderBtn.disabled = true;
     connectBtn.disabled = true;
     showProgressSmooth();
-    if(!animRequest) animateVideo(); // animācija video ierakstam
 
     let stream;
     try { 
@@ -540,7 +534,7 @@ async function startRecording(includeTokens=false) {
         renderBtn.disabled = false;
         connectBtn.disabled = false;
         startRecording._recording = false;
-        stopAnimation(); // aptur video animāciju
+        stopAnimation();
     };
 
     function cleanup() {
@@ -560,13 +554,15 @@ async function startRecording(includeTokens=false) {
 
     // ===== Video animācija =====
     function animateVideo(frame=0){
-        drawFrame(frame, true, true); // forVideo = true
+        drawFrame(frame, true, false); // forVideo = false -> video ignorē ETH bilanci
         animRequest = requestAnimationFrame(()=>animateVideo(frame+1));
     }
+    animateVideo();
 }
 
 // Event listener pogai “Record”
-recordBtn.addEventListener('click', () => startRecording(true)); // true = parāda token sarakstu video
+recordBtn.addEventListener('click', () => startRecording(true));
+
 
 
 
