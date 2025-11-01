@@ -240,7 +240,12 @@
         ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
       });
 
-      if(showTokensFrame && showInfo){
+      if(showTokensFrame && showInfo && !hideInfoForRecording){
+    ctx.fillStyle='#0ff';
+    ctx.font='22px Inter';
+    ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}  Tx: ${txCount}`, 10, 80);
+}
+
     ctx.fillStyle='#0ff';
     ctx.font='22px Inter';
     ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`, 10, 80);
