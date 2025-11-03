@@ -122,31 +122,21 @@
   <script>
     
     // ==== Responsive Canvas ====
-const canvas = document.getElementById('snapshotCanvas');
-const ctx = canvas.getContext('2d');
-
-// Funkcija, kas aprēķina scaling atkarībā no viewport platuma
-function getCanvasScale() {
-  const vw = window.innerWidth;
-  // mērogs starp 0.5 un 1.0, proporcionāli 1920px platumam
-  const scale = Math.min(Math.max(vw / 1920, 0.5), 1);
-  return scale;
-}
-
-function resizeCanvas() {
-  const dpr = window.devicePixelRatio || 1;
-  const scale = getCanvasScale();
-  canvas.width = Math.round(1920 * dpr * scale);
-  canvas.height = Math.round(1080 * dpr * scale);
-  canvas.style.width = '100%';
-  canvas.style.height = 'auto';
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(dpr * scale, dpr * scale);
-}
-
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    const canvas = document.getElementById('snapshotCanvas');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const scale = isMobile ? 0.6 : 1;
+      canvas.width = Math.round(1920 * dpr * scale);
+      canvas.height = Math.round(1080 * dpr * scale);
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(dpr*scale, dpr*scale);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
     // ===== Variables =====
     const NFT_CONTRACT = "0x1EF02c3Ed33a98c10F0bf1fd71e4D226e8e408A5";
@@ -576,6 +566,7 @@ recordBtn.addEventListener('click', () => startRecording(true)); // true = parā
   </script>
 </body>
 </html>
+
 
 
 
