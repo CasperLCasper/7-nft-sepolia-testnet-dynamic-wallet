@@ -363,64 +363,85 @@
 
 // ===== Render Snapshot =====
 async function renderSnapshot() {
-  if (!account) await connectWallet();
-  if (!provider || !account) {
-    statusMsg.textContent = 'Wallet not connected.';
-    return;
-  }
-
-  stopAnimation();
-  showProgressSmooth();
-  progressBar.style.transform = 'scaleX(0)'; // sāk no 0
-  statusMsg.textContent = '';
-
-  let progress = 0;
-  let running = true;
-
-  // Simulē gludu progressBar kustību
-  function animateProgress() {
-    if (!running) return;
-    // palielina progresu mazā solī
-    progress = Math.min(progress + 0.005, 0.99); // neaizpildās līdz 1, gaidot datus
-    progressBar.style.transform = `scaleX(${progress})`;
-    requestAnimationFrame(animateProgress);
-  }
-  requestAnimationFrame(animateProgress);
-
-  try {
-    // 1️⃣ ETH bilance un transakcijas
-    const balanceBig = await provider.getBalance(account);
-    ethBalance = Number(ethers.formatEther(balanceBig)) || 0;
-    txCount = Number(await provider.getTransactionCount(account)) || 0;
-
-    // 2️⃣ Tokeni un NFT
-    const fetchedTokens = await getTokens();
-    const fetchedNFTs = await getAllNFTs();
-    tokens = [...fetchedTokens, ...fetchedNFTs];
-
-    // 3️⃣ Vizualizācijas inicializācija
-    await initParticlesOnce();
-    particles = cloneParticles();
-    animate();
-
-    // 4️⃣ Atjauno tokenu sarakstu
-    if (showInfo) {
-      tokenListContainer.style.display = 'block';
-      updateTokenListUI();
+    if (!account) await connectWallet();
+    if (!provider || !account) {
+        statusMsg.textContent = 'Wallet not connected.';
+        return;
     }
 
-    // ✅ Dati gatavi — uzstādi progresu uz 100%, parādi gala statusu un pazūd progressBar
-   running = false; // aptur animāciju
-progressBar.style.transform = 'scaleX(1)'; // aizpilda pilnībā
-statusMsg.textContent = 'Visualization running!'; // rāda statusu
-hideProgressSmooth(); // tikai šeit progressBar pazūd
-  } catch (e) {
-    running = false;
-    hideProgressSmooth();
-    console.error('Render error:', e);
-    statusMsg.textContent = 'Error rendering visualization.';
-    alert('Render failed. Check console for details.');
-  }
+    stopAnimation();
+    showProgressSmooth();
+    progressBar.style.transform = 'scaleX(0)';
+    statusMsg.textContent = '';
+
+    // ===== Progress definīcija =====
+    const steps = [
+        { name: 'Fetching ETH balance', func: async () => {
+            const balanceBig = await provider.getBalance(account);
+            ethBalance = Number(ethers.formatEther(balanceBig)) || 0;
+        }},
+        { name: 'Fetching transaction count', func: async () => {
+            txCount = Number(await provider.getTransactionCount(account)) || 0;
+        }},
+        { name: 'Fetching tokens', func: async () => {
+            const fetchedTokens = await getTokens();
+            tokens = [...fetchedTokens];
+        }},
+        { name: 'Fetching NFTs', func: async () => {
+            const fetchedNFTs = await getAllNFTs();
+            tokens = [...tokens, ...fetchedNFTs];
+        }},
+        { name: 'Initializing particles', func: async () => {
+            await initParticlesOnce();
+            particles = cloneParticles();
+        }}
+    ];
+
+    let currentStep = 0;
+    const totalSteps = steps.length;
+
+    // Smooth progress animation
+    let visualProgress = 0;
+    let running = true;
+
+    function animateProgress() {
+        if (!running) return;
+        // palielina vizuālo progresu, maksimāli līdz faktiska progresu
+        const targetProgress = currentStep / totalSteps;
+        visualProgress += (targetProgress - visualProgress) * 0.05; // gluda interpolācija
+        progressBar.style.transform = `scaleX(${visualProgress})`;
+        requestAnimationFrame(animateProgress);
+    }
+    requestAnimationFrame(animateProgress);
+
+    try {
+        for (const step of steps) {
+            statusMsg.textContent = step.name + '...';
+            await step.func();
+            currentStep++;
+        }
+
+        // Atjauno tokenu sarakstu UI, ja info tiek rādīta
+        if (showInfo) {
+            tokenListContainer.style.display = 'block';
+            updateTokenListUI();
+        }
+
+        // Pabeigt progresu
+        running = false;
+        progressBar.style.transform = 'scaleX(1)';
+        statusMsg.textContent = 'Visualization running!';
+        hideProgressSmooth();
+
+        // Sāc animāciju
+        animate();
+    } catch (e) {
+        running = false;
+        hideProgressSmooth();
+        console.error('Render error:', e);
+        statusMsg.textContent = 'Error rendering visualization.';
+        alert('Render failed. Check console for details.');
+    }
 }
 
 
