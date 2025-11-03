@@ -36,7 +36,6 @@
     #infoText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
     #accountDisplay { width:100%; word-break:break-word; margin-top:8px; font-size:16px; text-align:center; }
 
-    /* ===== Token List Table ==== */
     #tokenListContainer {
       display:none;
       position:absolute;
@@ -79,24 +78,16 @@
     </section>
 
     <div id="accountDisplay" aria-live="polite">Connected account: —</div>
-
     <div id="statusContainer" aria-hidden="false">
       <div id="statusMsg" class="status" role="status" aria-live="polite"></div>
       <div id="progressBarContainer" aria-hidden="true"><div id="progressBar"></div></div>
     </div>
-
     <div id="recordTimer" aria-live="polite">Recording: 0 / 20 s</div>
 
     <section class="snapshot-container" aria-label="Snapshot">
       <canvas id="snapshotCanvas" width="1920" height="1080" aria-label="Visualization canvas"></canvas>
-
-      <div id="fullscreenIcon" role="button" tabindex="0" aria-label="Toggle fullscreen">
-        ⤢ <span id="fullscreenText">Fullscreen</span>
-      </div>
-
-      <div id="toggleInfoIcon" role="button" tabindex="0" aria-label="Toggle info">
-        ℹ <span id="infoText">Info</span>
-      </div>
+      <div id="fullscreenIcon" role="button" tabindex="0" aria-label="Toggle fullscreen">⤢ <span id="fullscreenText">Fullscreen</span></div>
+      <div id="toggleInfoIcon" role="button" tabindex="0" aria-label="Toggle info">ℹ <span id="infoText">Info</span></div>
 
       <div id="tokenListContainer" aria-hidden="true">
         <table>
@@ -120,16 +111,15 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <script>
-    
-    // ==== Responsive Canvas ====
+    // ===== Canvas setup =====
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     const canvas = document.getElementById('snapshotCanvas');
     const ctx = canvas.getContext('2d');
     function resizeCanvas() {
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
-      canvas.width = Math.round(1920 * dpr * scale);
-      canvas.height = Math.round(1080 * dpr * scale);
+      canvas.width = Math.round(1920*dpr*scale);
+      canvas.height = Math.round(1080*dpr*scale);
       canvas.style.width = '100%';
       canvas.style.height = 'auto';
       ctx.setTransform(1,0,0,1,0,0);
@@ -143,8 +133,8 @@
     const providerRpcUrl = "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY";
     let provider, signer, account, wcProvider;
     let showInfo = true;
-    let tokens = [], ethBalance = 0, txCount = 0, particles = [], initialParticles = [], animRequest = null;
-    let walletSeed = 0;
+    let tokens=[], ethBalance=0, txCount=0, particles=[], initialParticles=[], animRequest=null;
+    let walletSeed=0;
 
     const connectBtn = document.getElementById('connectBtn');
     const renderBtn = document.getElementById('renderBtn');
@@ -161,51 +151,43 @@
     const toggleInfoIcon = document.getElementById('toggleInfoIcon');
     const progressBarContainer = document.getElementById('progressBarContainer');
     const progressBar = document.getElementById('progressBar');
-
     const tokenListContainer = document.getElementById('tokenListContainer');
     const tokenListContent = document.getElementById('tokenListContent');
 
     // ===== Helpers =====
     function showProgressSmooth(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; }
     function hideProgressSmooth(){ progressBar.style.transform='scaleX(1)'; setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
-
-    // ===== Seeded random =====
-    function hashStringToInt(str, modulo = 1000) {
-      let h = 2166136261 >>> 0;
-      for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-      return h % modulo;
-    }
-    function seededRandomFloat(seedStr) { return hashStringToInt(seedStr,10000)/10000; }
+    function hashStringToInt(str,mod=1000){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;} return h%mod; }
+    function seededRandomFloat(seedStr){ return hashStringToInt(seedStr,10000)/10000; }
 
     // ===== Particles =====
-    async function initParticlesOnce() {
-      initialParticles = [];
-      const particleCount = Math.min(150, 50 + (tokens.length || 0)*15);
-      const seedBase = (account||'') + String(ethBalance) + String(txCount);
+    async function initParticlesOnce(){
+      initialParticles=[];
+      const particleCount = Math.min(150,50+(tokens.length||0)*15);
+      const seedBase = (account||'')+String(ethBalance)+String(txCount);
       for(let i=0;i<particleCount;i++){
-        const t = tokens.length ? tokens[i%tokens.length] : { balance:1, address:String(i), symbol:'T' };
+        const t = tokens.length ? tokens[i%tokens.length] : {balance:1,address:String(i),symbol:'T'};
         const balanceFactor = t.isNFT ? 1 : Math.min(t.balance||0,20)/20;
-        let hue = hashStringToInt((t.address||'') + seedBase + i) % 360;
-        const ethFactor = Math.min(ethBalance/10,1);
-        hue = (hue + ethFactor*100)%360;
-        const speed = 0.005 + 0.01*(hashStringToInt((t.symbol||t.address)+seedBase+i,10)/10);
-        const r = t.isNFT ? 10 : 2 + 6*balanceFactor;
-        const angle = seededRandomFloat(seedBase + i + 'angle')*2*Math.PI;
-        const radius = 50 + seededRandomFloat(seedBase + i + 'radius')*400;
-        initialParticles.push({ angle, radius, r, hue, speed, token:t });
+        let hue = hashStringToInt((t.address||'')+seedBase+i)%360;
+        const ethFactor = Math.min(ethBalance/10,1); hue=(hue+ethFactor*100)%360;
+        const speed=0.005+0.01*(hashStringToInt((t.symbol||t.address)+seedBase+i,10)/10);
+        const r=t.isNFT?10:2+6*balanceFactor;
+        const angle=seededRandomFloat(seedBase+i+'angle')*2*Math.PI;
+        const radius=50+seededRandomFloat(seedBase+i+'radius')*400;
+        initialParticles.push({angle,radius,r,hue,speed,token:t});
       }
     }
     function cloneParticles(){ return initialParticles.map(p=>({...p})); }
 
-    // ===== Draw Frame =====
-    function drawFrame(frame, showTokensFrame){
+    // ===== Draw frame =====
+    function drawFrame(frame,showTokensFrame){
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
       const W = canvas.width/(dpr*scale);
       const H = canvas.height/(dpr*scale);
       ctx.clearRect(0,0,W,H);
       ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-      const cx0 = W/2; const cy0 = H/2;
+      const cx0=W/2, cy0=H/2;
 
       for(let i=0;i<particles.length;i++){
         for(let j=i+1;j<particles.length;j++){
@@ -229,112 +211,100 @@
       }
 
       particles.forEach(p=>{
-        p.angle += p.speed;
+        p.angle+=p.speed;
         const cx=cx0+Math.cos(p.angle)*p.radius;
         const cy=cy0+Math.sin(p.angle)*p.radius;
         const gradient=ctx.createRadialGradient(cx,cy,0,cx,cy,p.r*2.5);
         gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
         gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
         gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
-        ctx.fillStyle=gradient;
-        ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=gradient; ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
       });
 
       if(showTokensFrame && showInfo){
         ctx.fillStyle='#0ff';
         ctx.font='22px Inter';
-        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`, 10, 80);
+        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`,10,80);
       }
     }
 
-    // ===== Token List UI =====
+    // ===== Token UI =====
     function updateTokenListUI() {
-      if(!tokens || tokens.length===0){
-        tokenListContent.innerHTML = '<tr><td colspan="2" style="color:#777;">No tokens</td></tr>';
-        return;
-      }
-      tokenListContent.innerHTML = '';
+      if(!tokens || tokens.length===0){ tokenListContent.innerHTML='<tr><td colspan="2" style="color:#777;">No tokens</td></tr>'; return; }
+      tokenListContent.innerHTML='';
       tokens.forEach(t=>{
-        const tr = document.createElement('tr');
-        const addrTd = document.createElement('td');
-        addrTd.textContent = t.address;
-        addrTd.title = t.address;
-        const balTd = document.createElement('td');
-        balTd.textContent = t.balance.toFixed(4);
-        tr.appendChild(addrTd);
-        tr.appendChild(balTd);
+        const tr=document.createElement('tr');
+        const addrTd=document.createElement('td'); addrTd.textContent=t.address; addrTd.title=t.address;
+        const balTd=document.createElement('td'); balTd.textContent=t.balance.toFixed(4);
+        tr.appendChild(addrTd); tr.appendChild(balTd);
         tokenListContent.appendChild(tr);
       });
     }
 
     // ===== Wallet & NFT =====
-    async function checkNFTAccess() {
+    async function checkNFTAccess(){
       if(!account) return false;
       showProgressSmooth();
-      try {
-        const res = await fetch(`/api/getNFTs?account=${encodeURIComponent(account)}`);
-        const data = await res.json();
-        return data?.ownsNFT === true;
-      } catch(err) {
-        console.error('NFT access check failed:', err);
-        return false;
-      } finally {
-        hideProgressSmooth();
-      }
-    }
-
-    async function getTokens() {
-      if(!account) return [];
-      showProgressSmooth();
-      try {
-        const res = await fetch(`/api/getTokens?account=${encodeURIComponent(account)}`);
-        if(!res.ok){ statusMsg.textContent='Token API unavailable — fallback'; return []; }
-        const data = await res.json();
-        if(!data?.result?.tokenBalances) return [];
-        return data.result.tokenBalances.map(t=>{
-          const decimals = t.tokenDecimals != null ? Number(t.tokenDecimals) : 18;
-          const balance = Number(ethers.formatUnits(t.tokenBalance || "0x0", decimals));
-          const address = (t.tokenAddress || t.contractAddress || "").toLowerCase();
-          return { address, balance, symbol: t.symbol || address };
-        }).filter(t=>t.balance>0);
-      } catch(e){ console.error(e); statusMsg.textContent='Failed fetching tokens'; return []; }
+      try{
+        const res=await fetch(`/api/getNFTs?account=${encodeURIComponent(account)}`);
+        const data=await res.json();
+        return data?.ownsNFT===true;
+      }catch(err){ console.error(err); return false; }
       finally{ hideProgressSmooth(); }
     }
 
-    async function getAllNFTs() {
+    async function getTokens(){
       if(!account) return [];
       showProgressSmooth();
-      try {
-        const res = await fetch(`/api/getAllNFTs?account=${encodeURIComponent(account)}`);
+      try{
+        const res=await fetch(`/api/getTokens?account=${encodeURIComponent(account)}`);
+        if(!res.ok){ statusMsg.textContent='Token API unavailable — fallback'; return []; }
+        const data=await res.json();
+        if(!data?.result?.tokenBalances) return [];
+        return data.result.tokenBalances.map(t=>{
+          const decimals=t.tokenDecimals!=null?Number(t.tokenDecimals):18;
+          const balance=Number(ethers.formatUnits(t.tokenBalance||"0x0",decimals));
+          const address=(t.tokenAddress||t.contractAddress||"").toLowerCase();
+          return {address,balance,symbol:t.symbol||address};
+        }).filter(t=>t.balance>0);
+      }catch(e){ console.error(e); statusMsg.textContent='Failed fetching tokens'; return []; }
+      finally{ hideProgressSmooth(); }
+    }
+
+    async function getAllNFTs(){
+      if(!account) return [];
+      showProgressSmooth();
+      try{
+        const res=await fetch(`/api/getAllNFTs?account=${encodeURIComponent(account)}`);
         if(!res.ok) return [];
-        const data = await res.json();
+        const data=await res.json();
         if(!data?.nfts) return [];
         return data.nfts.map(nft=>({
-          address: nft.contract.address,
-          symbol: nft.contract.symbol||'NFT',
+          address:nft.contract.address,
+          symbol:nft.contract.symbol||'NFT',
           balance:1,
           isNFT:true,
-          tokenId: nft.id.tokenId
+          tokenId:nft.id.tokenId
         }));
-      } catch(e){ console.error(e); return []; }
-      finally { hideProgressSmooth(); }
+      }catch(e){ console.error(e); return []; }
+      finally{ hideProgressSmooth(); }
     }
 
     // ===== Connect Wallet =====
-    async function connectWallet() {
+    async function connectWallet(){
       showProgressSmooth();
-      try {
+      try{
         if(window.ethereum){
-          provider = new ethers.BrowserProvider(window.ethereum,"sepolia");
+          provider=new ethers.BrowserProvider(window.ethereum,"sepolia");
           await provider.send("eth_requestAccounts",[]);
-          signer = await provider.getSigner();
-          account = await signer.getAddress();
+          signer=await provider.getSigner();
+          account=await signer.getAddress();
         } else {
-          wcProvider = new WalletConnectProvider.default({ rpc:{11155111: providerRpcUrl} });
+          wcProvider=new WalletConnectProvider.default({ rpc:{11155111:providerRpcUrl} });
           await wcProvider.enable();
-          provider = new ethers.BrowserProvider(wcProvider,"sepolia");
-          signer = await provider.getSigner();
-          account = await signer.getAddress();
+          provider=new ethers.BrowserProvider(wcProvider,"sepolia");
+          signer=await provider.getSigner();
+          account=await signer.getAddress();
         }
 
         accountDisplay.textContent='Connected account: '+account;
@@ -352,100 +322,63 @@
           alert('Access denied — required NFT not found.');
         }
 
-      } catch(err){
+      }catch(err){
         console.error(err);
         statusMsg.textContent='Wallet connection failed.';
         alert('Wallet connection failed. Retry.');
-      } finally{
-        hideProgressSmooth();
-      }
+      }finally{ hideProgressSmooth(); }
     }
 
-// ===== Render Snapshot =====
-async function renderSnapshot() {
-    if (!account) await connectWallet();
-    if (!provider || !account) {
-        statusMsg.textContent = 'Wallet not connected.';
-        return;
-    }
+    // ===== Render Snapshot =====
+    async function renderSnapshot(){
+      if(!account) await connectWallet();
+      if(!provider || !account){ statusMsg.textContent='Wallet not connected.'; return; }
 
-    stopAnimation();
-    showProgressSmooth();
-    progressBar.style.transform = 'scaleX(0)';
-    statusMsg.textContent = '';
+      stopAnimation();
+      showProgressSmooth();
+      progressBar.style.transform='scaleX(0)';
+      statusMsg.textContent='';
 
-    // ===== Progress definīcija =====
-    const steps = [
-        { name: 'Fetching ETH balance', func: async () => {
-            const balanceBig = await provider.getBalance(account);
-            ethBalance = Number(ethers.formatEther(balanceBig)) || 0;
-        }},
-        { name: 'Fetching transaction count', func: async () => {
-            txCount = Number(await provider.getTransactionCount(account)) || 0;
-        }},
-        { name: 'Fetching tokens', func: async () => {
-            const fetchedTokens = await getTokens();
-            tokens = [...fetchedTokens];
-        }},
-        { name: 'Fetching NFTs', func: async () => {
-            const fetchedNFTs = await getAllNFTs();
-            tokens = [...tokens, ...fetchedNFTs];
-        }},
-        { name: 'Initializing particles', func: async () => {
-            await initParticlesOnce();
-            particles = cloneParticles();
-        }}
-    ];
+      const steps=[
+        {name:'Fetching ETH balance', func: async()=>{ ethBalance=Number(ethers.formatEther(await provider.getBalance(account)))||0; }},
+        {name:'Fetching transaction count', func: async()=>{ txCount=Number(await provider.getTransactionCount(account))||0; }},
+        {name:'Fetching tokens', func: async()=>{ tokens=[...await getTokens()]; }},
+        {name:'Fetching NFTs', func: async()=>{ tokens=[...tokens,...await getAllNFTs()]; }},
+        {name:'Initializing particles', func: async()=>{ await initParticlesOnce(); particles=cloneParticles(); }}
+      ];
 
-    let currentStep = 0;
-    const totalSteps = steps.length;
+      let currentStep=0, totalSteps=steps.length;
+      let visualProgress=0, running=true;
 
-    // Smooth progress animation
-    let visualProgress = 0;
-    let running = true;
-
-    function animateProgress() {
-        if (!running) return;
-        // palielina vizuālo progresu, maksimāli līdz faktiska progresu
-        const targetProgress = currentStep / totalSteps;
-        visualProgress += (targetProgress - visualProgress) * 0.05; // gluda interpolācija
-        progressBar.style.transform = `scaleX(${visualProgress})`;
+      function animateProgress(){
+        if(!running) return;
+        const targetProgress=currentStep/totalSteps;
+        visualProgress+=(targetProgress-visualProgress)*0.05;
+        progressBar.style.transform=`scaleX(${visualProgress})`;
         requestAnimationFrame(animateProgress);
-    }
-    requestAnimationFrame(animateProgress);
+      }
+      requestAnimationFrame(animateProgress);
 
-    try {
-        for (const step of steps) {
-            statusMsg.textContent = step.name + '...';
-            await step.func();
-            currentStep++;
+      try{
+        for(const step of steps){
+          statusMsg.textContent=step.name+'...';
+          await step.func();
+          currentStep++;
         }
 
-        // Atjauno tokenu sarakstu UI, ja info tiek rādīta
-        if (showInfo) {
-            tokenListContainer.style.display = 'block';
-            updateTokenListUI();
-        }
+        if(showInfo){ tokenListContainer.style.display='block'; updateTokenListUI(); }
 
-        // Pabeigt progresu
-        running = false;
-        progressBar.style.transform = 'scaleX(1)';
-        statusMsg.textContent = 'Visualization running!';
+        running=false; progressBar.style.transform='scaleX(1)'; statusMsg.textContent='Visualization running!';
         hideProgressSmooth();
-
-        // Sāc animāciju
         animate();
-    } catch (e) {
-        running = false;
-        hideProgressSmooth();
-        console.error('Render error:', e);
-        statusMsg.textContent = 'Error rendering visualization.';
-        alert('Render failed. Check console for details.');
+      }catch(e){ running=false; hideProgressSmooth(); console.error(e); statusMsg.textContent='Error rendering visualization.'; alert('Render failed. Check console.'); }
     }
-}
 
+    // ===== Animation =====
+    function animate(frame=0){ drawFrame(frame,true); animRequest=requestAnimationFrame(()=>animate(frame+1)); }
+    function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
 
-  // ===== Event Listeners =====
+    // ===== Event Listeners =====
     connectBtn.addEventListener('click', connectWallet);
     renderBtn.addEventListener('click', renderSnapshot);
     fullscreenIcon.addEventListener('click', ()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
@@ -456,137 +389,78 @@ async function renderSnapshot() {
       if(showInfo) updateTokenListUI();
     });
 
-    // ===== Animation =====
-    function animate(frame=0){ drawFrame(frame,true); animRequest=requestAnimationFrame(()=>animate(frame+1)); }
-    function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
-
-   // ===== Video Recording =====
-function pickSupportedMimeType() {
-    const candidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
-    for(const c of candidates) {
-        try { 
-            if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; 
-        } catch(e) {}
-    }
-    return '';
-}
-
-async function startRecording(includeTokens=false) {
-    if(startRecording._recording) return;
-    startRecording._recording = true;
-
-    // Saglabā sākotnējo showInfo vērtību
-    const previousShowInfo = showInfo;
-
-    // Ierakstam disable SepoliaETH, Tx
-    showInfo = false;
-
-    // Ja vajag token sarakstu video, parādi to
-    if(includeTokens) {
-        tokenListContainer.style.display = 'block';
-        document.getElementById('infoText').textContent = 'Info';
+    // ===== Video Recording =====
+    function pickSupportedMimeType(){
+      const candidates=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+      for(const c of candidates){ try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; }catch(e){} }
+      return '';
     }
 
-    // Sagatavo animāciju
-    stopAnimation();
-    particles = cloneParticles();
-    drawFrame(0, true);
+    async function startRecording(includeTokens=false){
+      if(startRecording._recording) return;
+      startRecording._recording=true;
+      const previousShowInfo=showInfo;
+      showInfo=false;
+      if(includeTokens){ tokenListContainer.style.display='block'; document.getElementById('infoText').textContent='Info'; }
+      stopAnimation(); particles=cloneParticles(); drawFrame(0,true);
+      statusMsg.textContent='Preparing recording...';
+      recordBtn.disabled=true; renderBtn.disabled=true; connectBtn.disabled=true;
+      showProgressSmooth(); if(!animRequest) animate();
 
-    statusMsg.textContent = 'Preparing recording...';
-    recordBtn.disabled = true;
-    renderBtn.disabled = true;
-    connectBtn.disabled = true;
-    showProgressSmooth();
-    if(!animRequest) animate();
+      let stream; try{ stream=canvas.captureStream(30); }catch(err){ statusMsg.textContent='Recording not supported.'; cleanup(); return; }
 
-    let stream;
-    try { 
-        stream = canvas.captureStream(30); 
-    } catch(err) { 
-        statusMsg.textContent = 'Recording not supported.'; 
-        cleanup(); 
-        return; 
-    }
+      const mime=pickSupportedMimeType(); let recorder;
+      try{ recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(err){ alert('MediaRecorder not available.'); cleanup(); return; }
 
-    const mime = pickSupportedMimeType();
-    let recorder;
-    try { 
-        recorder = mime ? new MediaRecorder(stream, {mimeType: mime}) : new MediaRecorder(stream); 
-    } catch(err) { 
-        alert('MediaRecorder not available.'); 
-        cleanup(); 
-        return; 
-    }
+      const chunks=[]; recorder.ondataavailable=(e)=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+      recorder.onerror=(ev)=>{ console.error(ev); statusMsg.textContent='Recording error.'; };
+      recorder.onstart=()=>{ statusMsg.textContent='Recording...'; };
+      recorder.start();
 
-    const chunks = [];
-    recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
-    recorder.onerror = (ev) => { console.error(ev); statusMsg.textContent = 'Recording error.'; };
-    recorder.onstart = () => { statusMsg.textContent = 'Recording...'; };
-    recorder.start();
+      const startTime=performance.now(), duration=20000;
+      function updateProgress(timestamp){
+        const elapsed=timestamp-startTime;
+        const progress=Math.min(elapsed/duration,1);
+        progressBar.style.transform=`scaleX(${progress})`;
+        const seconds=Math.floor(elapsed/1000);
+        recordTimer.textContent=`Recording: ${seconds} / 20 s`;
+        if(elapsed<duration) requestAnimationFrame(updateProgress); else try{ recorder.stop(); }catch(e){}
+      }
+      requestAnimationFrame(updateProgress);
 
-    const startTime = performance.now();
-    const duration = 20000; // 20 sekundes
-
-    function updateProgress(timestamp) {
-        const elapsed = timestamp - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        progressBar.style.transform = `scaleX(${progress})`;
-        const seconds = Math.floor(elapsed / 1000);
-        recordTimer.textContent = `Recording: ${seconds} / 20 s`;
-        if(elapsed < duration) requestAnimationFrame(updateProgress);
-        else try { recorder.stop(); } catch(e) { console.warn(e); }
-    }
-    requestAnimationFrame(updateProgress);
-
-    recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: chunks.length ? chunks[0].type : 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
-        a.download = `wallet_visualization.${ext}`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-
-        // Atjauno sākotnējo showInfo vērtību
-        showInfo = previousShowInfo;
-        document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
-        tokenListContainer.style.display = showInfo ? 'block' : 'none';
+      recorder.onstop=()=>{
+        const blob=new Blob(chunks,{type:chunks.length?chunks[0].type:'video/webm'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.style.display='none'; a.href=url;
+        const ext=blob.type.includes('mp4')?'mp4':'webm';
+        a.download=`wallet_visualization.${ext}`; document.body.appendChild(a); a.click();
+        setTimeout(()=>{document.body.removeChild(a); URL.revokeObjectURL(url);},100);
+        showInfo=previousShowInfo;
+        document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+        tokenListContainer.style.display=showInfo?'block':'none';
         updateTokenListUI();
+        statusMsg.textContent='Recording finished!'; recordTimer.textContent='Recording: 0 / 20 s';
+        hideProgressSmooth(); recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
+        startRecording._recording=false;
+      };
 
-        statusMsg.textContent = 'Recording finished!';
-        recordTimer.textContent = 'Recording: 0 / 20 s';
-        hideProgressSmooth();
-        recordBtn.disabled = false;
-        renderBtn.disabled = false;
-        connectBtn.disabled = false;
-        startRecording._recording = false;
-    };
-
-    function cleanup() {
-        try { if(recorder && recorder.state === 'recording') recorder.stop(); } catch(e) {}
-        showInfo = previousShowInfo;
-        document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
-        tokenListContainer.style.display = showInfo ? 'block' : 'none';
+      function cleanup(){
+        try{ if(recorder && recorder.state==='recording') recorder.stop(); }catch(e){}
+        showInfo=previousShowInfo;
+        document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+        tokenListContainer.style.display=showInfo?'block':'none';
         updateTokenListUI();
-        recordBtn.disabled = false;
-        renderBtn.disabled = false;
-        connectBtn.disabled = false;
-        hideProgressSmooth();
-        recordTimer.textContent = 'Recording: 0 / 20 s';
-        startRecording._recording = false;
+        recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
+        hideProgressSmooth(); recordTimer.textContent='Recording: 0 / 20 s';
+        startRecording._recording=false;
+      }
     }
-}
 
-// Event listener pogai “Record”
-recordBtn.addEventListener('click', () => startRecording(true)); // true = parāda token sarakstu video
-
-
+    recordBtn.addEventListener('click',()=>startRecording(true));
   </script>
 </body>
 </html>
+
 
 
 
