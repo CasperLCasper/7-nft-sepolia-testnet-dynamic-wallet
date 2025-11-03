@@ -63,22 +63,22 @@
     #tokenListContainer::-webkit-scrollbar-thumb { background:#0ff; border-radius:3px; }
     #tokenListContainer::-webkit-scrollbar-track { background:#222; border-radius:3px; }
 
-    /* ===== Mobile adjustments: move token list below canvas ===== */
+    /* ===== Mobile adjustments ===== */
     @media (max-width: 768px) {
-      #tokenListContainer {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin-top:12px;
-      }
       #accountDisplay {
-        order: 1;
+        order: 2;
+        margin-top: 12px;
       }
-      .snapshot-container {
-        order: 0;
+      #tokenListContainer {
+        position: static;
+        max-width: 100%;
+        width: 100%;
+        margin-top: 12px;
+        top: auto;
+        left: auto;
+        z-index: 1;
       }
+      .snapshot-container { padding: 12px; }
     }
   </style>
 </head>
@@ -96,7 +96,16 @@
       <button id="recordBtn" disabled>Record 20s HD Video</button>
     </section>
 
-    <div class="snapshot-container" aria-label="Snapshot">
+    <div id="accountDisplay" aria-live="polite">Connected account: —</div>
+
+    <div id="statusContainer" aria-hidden="false">
+      <div id="statusMsg" class="status" role="status" aria-live="polite"></div>
+      <div id="progressBarContainer" aria-hidden="true"><div id="progressBar"></div></div>
+    </div>
+
+    <div id="recordTimer" aria-live="polite">Recording: 0 / 20 s</div>
+
+    <section class="snapshot-container" aria-label="Snapshot">
       <canvas id="snapshotCanvas" width="1920" height="1080" aria-label="Visualization canvas"></canvas>
 
       <div id="fullscreenIcon" role="button" tabindex="0" aria-label="Toggle fullscreen">
@@ -113,16 +122,7 @@
           <tbody id="tokenListContent"></tbody>
         </table>
       </div>
-    </div>
-
-    <div id="accountDisplay" aria-live="polite">Connected account: —</div>
-
-    <div id="statusContainer" aria-hidden="false">
-      <div id="statusMsg" class="status" role="status" aria-live="polite"></div>
-      <div id="progressBarContainer" aria-hidden="true"><div id="progressBar"></div></div>
-    </div>
-
-    <div id="recordTimer" aria-live="polite">Recording: 0 / 20 s</div>
+    </section>
   </div>
 
   <div id="overlay" tabindex="-1"></div>
@@ -138,7 +138,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <script>
-    // ==== Responsive Canvas ====
+    // ===== Responsive Canvas =====
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     const canvas = document.getElementById('snapshotCanvas');
     const ctx = canvas.getContext('2d');
@@ -155,198 +155,45 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // ===== Variables =====
-    const NFT_CONTRACT = "0x1EF02c3Ed33a98c10F0bf1fd71e4D226e8e408A5";
-    const providerRpcUrl = "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY";
-    let provider, signer, account, wcProvider;
-    let showInfo = true;
-    let tokens = [], ethBalance = 0, txCount = 0, particles = [], initialParticles = [], animRequest = null;
-    let walletSeed = 0;
-
-    const connectBtn = document.getElementById('connectBtn');
-    const renderBtn = document.getElementById('renderBtn');
-    const recordBtn = document.getElementById('recordBtn');
-    const accountDisplay = document.getElementById('accountDisplay');
-    const recordTimer = document.getElementById('recordTimer');
-    const statusMsg = document.getElementById('statusMsg');
-    const overlay = document.getElementById('overlay');
-    const recordDropdown = document.getElementById('recordDropdown');
-    const dropdownClose = document.getElementById('dropdownClose');
-    const recordWithTokensBtn = document.getElementById('recordWithTokensBtn');
-    const recordWithoutTokensBtn = document.getElementById('recordWithoutTokensBtn');
-    const fullscreenIcon = document.getElementById('fullscreenIcon');
-    const toggleInfoIcon = document.getElementById('toggleInfoIcon');
-    const progressBarContainer = document.getElementById('progressBarContainer');
-    const progressBar = document.getElementById('progressBar');
-
-    const tokenListContainer = document.getElementById('tokenListContainer');
-    const tokenListContent = document.getElementById('tokenListContent');
-
-    // ===== Helpers =====
-    function showProgressSmooth(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; }
-    function hideProgressSmooth(){ progressBar.style.transform='scaleX(1)'; setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
-
-    // ===== Seeded random =====
-    function hashStringToInt(str, modulo = 1000) {
-      let h = 2166136261 >>> 0;
-      for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-      return h % modulo;
-    }
-    function seededRandomFloat(seedStr) { return hashStringToInt(seedStr,10000)/10000; }
-
-    // ===== Particles =====
-    async function initParticlesOnce() {
-      initialParticles = [];
-      const particleCount = Math.min(150, 50 + (tokens.length || 0)*15);
-      const seedBase = (account||'') + String(ethBalance) + String(txCount);
-      for(let i=0;i<particleCount;i++){
-        const t = tokens.length ? tokens[i%tokens.length] : { balance:1, address:String(i), symbol:'T' };
-        const balanceFactor = t.isNFT ? 1 : Math.min(t.balance||0,20)/20;
-        let hue = hashStringToInt((t.address||'') + seedBase + i) % 360;
-        const ethFactor = Math.min(ethBalance/10,1);
-        hue = (hue + ethFactor*100)%360;
-        const speed = 0.005 + 0.01*(hashStringToInt((t.symbol||t.address)+seedBase+i,10)/10);
-        const r = t.isNFT ? 10 : 2 + 6*balanceFactor;
-        const angle = seededRandomFloat(seedBase + i + 'angle')*2*Math.PI;
-        const radius = 50 + seededRandomFloat(seedBase + i + 'radius')*400;
-        initialParticles.push({ angle, radius, r, hue, speed, token:t });
-      }
-    }
-    function cloneParticles(){ return initialParticles.map(p=>({...p})); }
-
-    // ===== Draw Frame =====
-    function drawFrame(frame, showTokensFrame){
-      const dpr = window.devicePixelRatio || 1;
-      const scale = isMobile ? 0.6 : 1;
-      const W = canvas.width/(dpr*scale);
-      const H = canvas.height/(dpr*scale);
-      ctx.clearRect(0,0,W,H);
-      ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-      const cx0 = W/2; const cy0 = H/2;
-
-      for(let i=0;i<particles.length;i++){
-        for(let j=i+1;j<particles.length;j++){
-          const p1=particles[i], p2=particles[j];
-          const x1=cx0+Math.cos(p1.angle)*p1.radius;
-          const y1=cy0+Math.sin(p1.angle)*p1.radius;
-          const x2=cx0+Math.cos(p2.angle)*p2.radius;
-          const y2=cy0+Math.sin(p2.angle)*p2.radius;
-          const dx=x1-x2, dy=y1-y2;
-          const dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<200){
-            const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
-            const alpha=0.2+0.4*avgBalance*(1-dist/200);
-            ctx.lineWidth=1.5+2*avgBalance;
-            const txFactor=Math.log(txCount+1)/10;
-            const hue=(p1.hue+p2.hue)/2+frame*0.4*txFactor;
-            ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
-            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-          }
-        }
-      }
-
-      particles.forEach(p=>{
-        p.angle += p.speed;
-        const cx=cx0+Math.cos(p.angle)*p.radius;
-        const cy=cy0+Math.sin(p.angle)*p.radius;
-        const gradient=ctx.createRadialGradient(cx,cy,0,cx,cy,p.r*2.5);
-        gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
-        gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
-        gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
-        ctx.fillStyle=gradient;
-        ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
-      });
-
-      if(showTokensFrame && showInfo){
-        ctx.fillStyle='#0ff';
-        ctx.font='22px Inter';
-        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`, 10, 80);
-      }
-    }
-
     // ===== Token List UI =====
-    function updateTokenList(){
-      tokenListContent.innerHTML='';
+    function updateTokenListUI() {
+      if(!tokens || tokens.length===0){
+        tokenListContent.innerHTML = '<tr><td colspan="2" style="color:#777;">No tokens</td></tr>';
+        return;
+      }
+      tokenListContent.innerHTML = '';
       tokens.forEach(t=>{
-        const tr=document.createElement('tr');
-        const tdAddr=document.createElement('td');
-        tdAddr.textContent=t.address.substring(0,6)+'...'+t.address.slice(-4);
-        const tdBal=document.createElement('td');
-        tdBal.textContent=t.isNFT?`NFT`:(t.balance||0).toFixed(3);
-        tr.appendChild(tdAddr); tr.appendChild(tdBal);
+        const tr = document.createElement('tr');
+        const addrTd = document.createElement('td');
+        addrTd.textContent = t.address;
+        addrTd.title = t.address;
+        const balTd = document.createElement('td');
+        balTd.textContent = t.balance.toFixed(4);
+        tr.appendChild(addrTd);
+        tr.appendChild(balTd);
         tokenListContent.appendChild(tr);
       });
-      if(isMobile){ tokenListContainer.style.display='block'; } else { tokenListContainer.style.display='none'; }
     }
 
-    // ===== Animation Loop =====
-    function animate(){
-      drawFrame(Date.now()*0.001,true);
-      animRequest=requestAnimationFrame(animate);
-    }
-
-    // ===== Wallet Connection =====
-    async function connectWallet(){
-      try{
-        if(window.ethereum){
-          provider=new ethers.BrowserProvider(window.ethereum);
-          await provider.send("eth_requestAccounts", []);
-          signer=await provider.getSigner();
-          account=await signer.getAddress();
-          accountDisplay.textContent='Connected account: '+account;
-          ethBalance=parseFloat(ethers.formatEther(await provider.getBalance(account)));
-          tokens=[{address:'ETH',balance:ethBalance}];
-          updateTokenList();
-          await initParticlesOnce();
-          particles=cloneParticles();
-          renderBtn.disabled=false;
-          recordBtn.disabled=false;
-          if(animRequest) cancelAnimationFrame(animRequest);
-          animate();
-        } else { alert('Metamask required'); }
-      }catch(e){ console.error(e); }
-    }
-    connectBtn.addEventListener('click', connectWallet);
-
-    renderBtn.addEventListener('click', ()=>drawFrame(Date.now()*0.001,true));
-
-    fullscreenIcon.addEventListener('click', ()=>{ if(document.fullscreenElement){document.exitFullscreen();} else {document.documentElement.requestFullscreen();} });
-    toggleInfoIcon.addEventListener('click', ()=>{ showInfo=!showInfo; });
-
-    // ===== Record Dropdown =====
-    recordBtn.addEventListener('click', ()=>{
-      overlay.style.display='block';
-      recordDropdown.style.display='block';
-      recordDropdown.setAttribute('aria-hidden','false');
-    });
-    dropdownClose.addEventListener('click', ()=>{
-      overlay.style.display='none';
-      recordDropdown.style.display='none';
-      recordDropdown.setAttribute('aria-hidden','true');
-    });
-
-    async function recordVideo(showTokens=true){
-      overlay.style.display='none'; recordDropdown.style.display='none'; recordDropdown.setAttribute('aria-hidden','true');
-      const chunks=[]; const stream=canvas.captureStream(30); const recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp9'});
-      recorder.ondataavailable=e=>chunks.push(e.data);
-      recorder.start();
-      for(let s=0;s<600;s++){
-        drawFrame(Date.now()*0.001, showTokens);
-        recordTimer.textContent=`Recording: ${(s/30).toFixed(1)} / 20 s`;
-        await new Promise(r=>setTimeout(r,33));
+    // ===== Add updateMobileBalance function =====
+    function updateMobileBalance() {
+      if(isMobile){
+        tokenListContainer.style.display = 'block';
+        updateTokenListUI();
       }
-      recorder.stop();
-      await new Promise(r=>recorder.onstop=r);
-      const blob=new Blob(chunks,{type:'video/webm'});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='snapshot.webm'; a.click();
-      recordTimer.textContent='Recording: 0 / 20 s';
     }
-    recordWithTokensBtn.addEventListener('click', ()=>recordVideo(true));
-    recordWithoutTokensBtn.addEventListener('click', ()=>recordVideo(false));
+
+    
+
+   // ===== Call updateMobileBalance on mobile =====
+if(isMobile){
+  updateMobileBalance();
+}
+
   </script>
 </body>
 </html>
+
 
 
 
