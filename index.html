@@ -17,8 +17,8 @@
     button { padding:12px 20px; border-radius:12px; border:none; cursor:pointer; background:linear-gradient(90deg,#4a90e2,#9013fe); color:#fff; font-weight:700; font-size:16px; box-shadow:0 6px 18px rgba(0,0,0,0.45); transition: transform 0.2s, box-shadow 0.2s; }
     button:disabled { background:#444; cursor:not-allowed; box-shadow:0 6px 18px rgba(0,0,0,0.2); }
     button:hover:not(:disabled) { transform:translateY(-4px) scale(1.03); box-shadow:0 8px 22px rgba(0,0,0,0.65); }
-    .snapshot-container { width:100%; background:#000; border-radius:14px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,0.6); position:relative; display:flex; flex-direction:row; align-items:flex-start; gap:12px; }
-    #snapshotCanvas { width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.03); display:block; }
+    .snapshot-container { width:100%; background:#000; border-radius:14px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,0.6); position:relative; }
+    #snapshotCanvas { width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.03); display:block; margin-bottom:12px; }
     #recordTimer { margin-top:6px; color:#0ff; font-weight:600; font-size:16px; text-align:center; }
     #statusContainer { position: relative; width: 100%; height: 40px; margin-top: 8px; }
     .status { font-weight:600; font-size:16px; color:#fff; line-height:40px; text-align:center; }
@@ -36,9 +36,9 @@
     #infoText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
     #accountDisplay { width:100%; word-break:break-word; margin-top:8px; font-size:16px; text-align:center; }
 
-    /* Token List Table */
+    /* ===== Token List Table ==== */
     #tokenListContainer {
-      display:block;
+      display:none;
       position:absolute;
       top:80px;
       left:10px;
@@ -63,13 +63,42 @@
     #tokenListContainer::-webkit-scrollbar-thumb { background:#0ff; border-radius:3px; }
     #tokenListContainer::-webkit-scrollbar-track { background:#222; border-radius:3px; }
 
-    /* Mobile: move token list below canvas */
-    @media (max-width:768px) {
-      .snapshot-container { flex-direction:column; align-items:center; }
-      #tokenListContainer { position:relative; top:auto; left:auto; width:100%; max-width:100%; margin-top:12px; }
+    /* ===== Mobilā versija ===== */
+    @media (max-width: 768px) {
+      .container { padding: 10px; }
+      h1 { font-size: 28px; }
+      .subtitle { font-size: 16px; }
+      .controls { flex-direction: column; gap: 8px; }
+      button { width: 100%; font-size: 14px; padding: 10px 0; }
+
+      .snapshot-container { padding: 12px; }
+
+      #snapshotCanvas { height: auto; max-height: 50vh; }
+
+      #tokenListContainer {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-top: 12px;
+        max-height: 200px;
+      }
+
+      #fullscreenIcon, #toggleInfoIcon {
+        top: auto;
+        bottom: 10px;
+        right: 10px;
+        left: auto;
+        font-size: 14px;
+        padding: 4px 8px;
+      }
+
+      #fullscreenText, #infoText { font-size: 14px; }
     }
   </style>
 </head>
+
 <body>
   <div class="container" role="main">
     <header>
@@ -85,19 +114,25 @@
 
     <div id="accountDisplay" aria-live="polite">Connected account: —</div>
 
-    <div id="statusContainer">
+    <div id="statusContainer" aria-hidden="false">
       <div id="statusMsg" class="status" role="status" aria-live="polite"></div>
-      <div id="progressBarContainer"><div id="progressBar"></div></div>
+      <div id="progressBarContainer" aria-hidden="true"><div id="progressBar"></div></div>
     </div>
 
     <div id="recordTimer" aria-live="polite">Recording: 0 / 20 s</div>
 
-    <section class="snapshot-container">
+    <section class="snapshot-container" aria-label="Snapshot">
       <canvas id="snapshotCanvas" width="1920" height="1080" aria-label="Visualization canvas"></canvas>
-      <div id="fullscreenIcon">⤢ <span id="fullscreenText">Fullscreen</span></div>
-      <div id="toggleInfoIcon">ℹ <span id="infoText">Info</span></div>
 
-      <div id="tokenListContainer">
+      <div id="fullscreenIcon" role="button" tabindex="0" aria-label="Toggle fullscreen">
+        ⤢ <span id="fullscreenText">Fullscreen</span>
+      </div>
+
+      <div id="toggleInfoIcon" role="button" tabindex="0" aria-label="Toggle info">
+        ℹ <span id="infoText">Info</span>
+      </div>
+
+      <div id="tokenListContainer" aria-hidden="true">
         <table>
           <thead><tr><th>Address</th><th>Balance</th></tr></thead>
           <tbody id="tokenListContent"></tbody>
@@ -106,10 +141,10 @@
     </section>
   </div>
 
-  <div id="overlay"></div>
+  <div id="overlay" tabindex="-1"></div>
 
   <div id="recordDropdown" role="dialog" aria-modal="true" aria-hidden="true">
-    <button id="dropdownClose">&times;</button>
+    <button id="dropdownClose" aria-label="Close">&times;</button>
     <button id="recordWithTokensBtn">Record video with token list</button>
     <button id="recordWithoutTokensBtn">Record video without token list</button>
   </div>
@@ -119,7 +154,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <script>
-    // ===== Responsive Canvas =====
+    // ==== Responsive Canvas ====
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     const canvas = document.getElementById('snapshotCanvas');
     const ctx = canvas.getContext('2d');
@@ -137,25 +172,43 @@
     resizeCanvas();
 
     // ===== Variables =====
-    let provider, signer, account;
-    let tokens = [];
+    let provider, signer, account, wcProvider;
     let showInfo = true;
-    let animRequest = null;
+    let tokens = [], ethBalance = 0, txCount = 0, particles = [], initialParticles = [], animRequest = null;
+    let walletSeed = 0;
 
     const connectBtn = document.getElementById('connectBtn');
     const renderBtn = document.getElementById('renderBtn');
     const recordBtn = document.getElementById('recordBtn');
     const accountDisplay = document.getElementById('accountDisplay');
-    const tokenListContainer = document.getElementById('tokenListContainer');
-    const tokenListContent = document.getElementById('tokenListContent');
+    const recordTimer = document.getElementById('recordTimer');
+    const statusMsg = document.getElementById('statusMsg');
+    const overlay = document.getElementById('overlay');
+    const recordDropdown = document.getElementById('recordDropdown');
+    const dropdownClose = document.getElementById('dropdownClose');
+    const recordWithTokensBtn = document.getElementById('recordWithTokensBtn');
+    const recordWithoutTokensBtn = document.getElementById('recordWithoutTokensBtn');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
     const toggleInfoIcon = document.getElementById('toggleInfoIcon');
-    const statusMsg = document.getElementById('statusMsg');
     const progressBarContainer = document.getElementById('progressBarContainer');
     const progressBar = document.getElementById('progressBar');
-    const recordTimer = document.getElementById('recordTimer');
+
+    const tokenListContainer = document.getElementById('tokenListContainer');
+    const tokenListContent = document.getElementById('tokenListContent');
 
     // ===== Helpers =====
+    function showProgressSmooth(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; }
+    function hideProgressSmooth(){ progressBar.style.transform='scaleX(1)'; setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
+
+    // ===== Seeded random =====
+    function hashStringToInt(str, modulo = 1000) {
+      let h = 2166136261 >>> 0;
+      for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+      return h % modulo;
+    }
+    function seededRandomFloat(seedStr) { return hashStringToInt(seedStr,10000)/10000; }
+
+    // ===== Token List UI =====
     function updateTokenListUI() {
       if(!tokens || tokens.length===0){
         tokenListContent.innerHTML = '<tr><td colspan="2" style="color:#777;">No tokens</td></tr>';
@@ -164,148 +217,21 @@
       tokenListContent.innerHTML = '';
       tokens.forEach(t=>{
         const tr = document.createElement('tr');
-        const addrTd = document.createElement('td'); addrTd.textContent = t.address; tr.appendChild(addrTd);
-        const balTd = document.createElement('td'); balTd.textContent = t.balance.toFixed(4); tr.appendChild(balTd);
+        const addrTd = document.createElement('td'); addrTd.textContent = t.address; addrTd.title = t.address;
+        const balTd = document.createElement('td'); balTd.textContent = t.balance.toFixed(4);
+        tr.appendChild(addrTd); tr.appendChild(balTd);
         tokenListContent.appendChild(tr);
       });
     }
 
-    // ===== Connect Wallet =====
-    async function connectWallet() {
-      try {
-        if(window.ethereum){
-          provider = new ethers.BrowserProvider(window.ethereum,"sepolia");
-          await provider.send("eth_requestAccounts",[]);
-          signer = await provider.getSigner();
-          account = await signer.getAddress();
-        } else {
-          alert('MetaMask not found');
-          return;
-        }
-        accountDisplay.textContent = 'Connected account: '+account;
-        renderBtn.disabled = false;
-        recordBtn.disabled = false;
-
-        // Mock tokens for demo
-        tokens = [
-          {address:'0xToken1', balance:1.2345},
-          {address:'0xToken2', balance:2.3456},
-        ];
-        updateTokenListUI();
-        statusMsg.textContent = 'Wallet connected!';
-      } catch(err){
-        console.error(err);
-        statusMsg.textContent = 'Failed to connect wallet.';
-      }
-    }
-
-    // ===== Render Snapshot =====
-    function drawFrame(frame=0){
-      const dpr = window.devicePixelRatio || 1;
-      const W = canvas.width/dpr;
-      const H = canvas.height/dpr;
-      ctx.clearRect(0,0,W,H);
-      ctx.fillStyle='#000';
-      ctx.fillRect(0,0,W,H);
-
-      if(showInfo){
-        ctx.fillStyle='#0ff';
-        ctx.font='22px Inter';
-        ctx.fillText(`ETH Balance: 0.1234`, 10, 40);
-      }
-    }
-
-    function animate(frame=0){
-      drawFrame(frame);
-      animRequest = requestAnimationFrame(()=>animate(frame+1));
-    }
-    function stopAnimation(){
-      if(animRequest) cancelAnimationFrame(animRequest);
-      animRequest=null;
-    }
-
-    // ===== Fullscreen & Info toggle =====
-    fullscreenIcon.addEventListener('click',()=>{
-      if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{});
-      else document.exitFullscreen().catch(()=>{});
-    });
-
-    toggleInfoIcon.addEventListener('click',()=>{
-      showInfo = !showInfo;
-      tokenListContainer.style.display = showInfo?'block':'none';
-    });
-
-    renderBtn.addEventListener('click',()=>{ stopAnimation(); drawFrame(); animate(); });
-
-    connectBtn.addEventListener('click', connectWallet);
-
-    // ===== Video Recording =====
-    function pickSupportedMimeType(){
-      const candidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
-      for(const c of candidates){ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; }
-      return '';
-    }
-
-    async function startRecording(includeTokens=false){
-      if(startRecording._recording) return;
-      startRecording._recording=true;
-      const prevShowInfo = showInfo;
-      showInfo=includeTokens;
-      tokenListContainer.style.display=showInfo?'block':'none';
-      stopAnimation();
-      drawFrame(0);
-
-      statusMsg.textContent='Preparing recording...';
-      renderBtn.disabled=true; recordBtn.disabled=true; connectBtn.disabled=true;
-      progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)';
-
-      let stream;
-      try { stream = canvas.captureStream(30); } catch(e){ statusMsg.textContent='Recording not supported.'; return; }
-
-      const mime = pickSupportedMimeType();
-      const recorder = mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
-      const chunks=[];
-      recorder.ondataavailable=(e)=>{ if(e.data && e.data.size) chunks.push(e.data); };
-      recorder.onstart=()=>{ statusMsg.textContent='Recording...'; };
-      recorder.start();
-
-      const startTime = performance.now();
-      const duration=20000;
-
-      function updateProgress(ts){
-        const elapsed = ts - startTime;
-        const progress = Math.min(elapsed/duration,1);
-        progressBar.style.transform=`scaleX(${progress})`;
-        recordTimer.textContent=`Recording: ${Math.floor(elapsed/1000)} / 20 s`;
-        if(elapsed<duration) requestAnimationFrame(updateProgress);
-        else recorder.stop();
-      }
-      requestAnimationFrame(updateProgress);
-
-      recorder.onstop=()=>{
-        const blob = new Blob(chunks,{type:chunks.length?chunks[0].type:'video/webm'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href=url;
-        a.download=`wallet_visualization.webm`;
-        a.click();
-        setTimeout(()=>URL.revokeObjectURL(url),100);
-
-        showInfo=prevShowInfo;
-        tokenListContainer.style.display=showInfo?'block':'none';
-        statusMsg.textContent='Recording finished!';
-        recordTimer.textContent='Recording: 0 / 20 s';
-        renderBtn.disabled=false; recordBtn.disabled=false; connectBtn.disabled=false;
-        progressBarContainer.style.display='none';
-        startRecording._recording=false;
-      };
-    }
-
-    recordBtn.addEventListener('click',()=>startRecording(true));
+    // ===== Event Listeners =====
+    fullscreenIcon.addEventListener('click', ()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
+    toggleInfoIcon.addEventListener('click', ()=>{ showInfo=!showInfo; document.getElementById('infoText').textContent=showInfo?'Info':'Hidden'; tokenListContainer.style.display=showInfo?'block':'none'; if(showInfo) updateTokenListUI(); });
 
   </script>
 </body>
 </html>
+
 
 
 
