@@ -17,7 +17,7 @@
     button { padding:12px 20px; border-radius:12px; border:none; cursor:pointer; background:linear-gradient(90deg,#4a90e2,#9013fe); color:#fff; font-weight:700; font-size:16px; box-shadow:0 6px 18px rgba(0,0,0,0.45); transition: transform 0.2s, box-shadow 0.2s; }
     button:disabled { background:#444; cursor:not-allowed; box-shadow:0 6px 18px rgba(0,0,0,0.2); }
     button:hover:not(:disabled) { transform:translateY(-4px) scale(1.03); box-shadow:0 8px 22px rgba(0,0,0,0.65); }
-    .snapshot-container { width:100%; background:#000; border-radius:14px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,0.6); position:relative; }
+    .snapshot-container { width:100%; background:#000; border-radius:14px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,0.6); position:relative; display:flex; flex-direction:row; align-items:flex-start; gap:12px; }
     #snapshotCanvas { width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.03); display:block; margin-bottom:12px; }
     #recordTimer { margin-top:6px; color:#0ff; font-weight:600; font-size:16px; text-align:center; }
     #statusContainer { position: relative; width: 100%; height: 40px; margin-top: 8px; }
@@ -63,22 +63,21 @@
     #tokenListContainer::-webkit-scrollbar-thumb { background:#0ff; border-radius:3px; }
     #tokenListContainer::-webkit-scrollbar-track { background:#222; border-radius:3px; }
 
-    /* ===== Mobile adjustments ===== */
+    /* ===== Mobile Responsive: move token list below canvas ==== */
     @media (max-width: 768px) {
-      #accountDisplay {
-        order: 2;
-        margin-top: 12px;
+      .snapshot-container {
+        flex-direction: column;
+        align-items: center;
       }
+
       #tokenListContainer {
-        position: static;
-        max-width: 100%;
-        width: 100%;
-        margin-top: 12px;
+        position: relative;
         top: auto;
         left: auto;
-        z-index: 1;
+        width: 100%;
+        max-width: 100%;
+        margin-top: 12px;
       }
-      .snapshot-container { padding: 12px; }
     }
   </style>
 </head>
@@ -155,44 +154,148 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // ===== Token List UI =====
-    function updateTokenListUI() {
-      if(!tokens || tokens.length===0){
-        tokenListContent.innerHTML = '<tr><td colspan="2" style="color:#777;">No tokens</td></tr>';
-        return;
-      }
-      tokenListContent.innerHTML = '';
-      tokens.forEach(t=>{
-        const tr = document.createElement('tr');
-        const addrTd = document.createElement('td');
-        addrTd.textContent = t.address;
-        addrTd.title = t.address;
-        const balTd = document.createElement('td');
-        balTd.textContent = t.balance.toFixed(4);
-        tr.appendChild(addrTd);
-        tr.appendChild(balTd);
-        tokenListContent.appendChild(tr);
-      });
+    // ===== Rest of your JS (unchanged) =====
+    <script>
+  // ===== Connect Wallet =====
+  connectBtn.addEventListener('click', connectWallet);
+
+  // ===== Render Snapshot =====
+  renderBtn.addEventListener('click', renderSnapshot);
+
+  // ===== Fullscreen & Info toggle =====
+  fullscreenIcon.addEventListener('click', () => {
+    if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{});
+    else document.exitFullscreen().catch(()=>{});
+  });
+
+  toggleInfoIcon.addEventListener('click', () => {
+    showInfo = !showInfo;
+    document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
+    tokenListContainer.style.display = showInfo ? 'block' : 'none';
+    if(showInfo) updateTokenListUI();
+  });
+
+  // ===== Animation =====
+  function animate(frame = 0) {
+    drawFrame(frame, true);
+    animRequest = requestAnimationFrame(() => animate(frame + 1));
+  }
+
+  function stopAnimation() {
+    if(animRequest) cancelAnimationFrame(animRequest);
+    animRequest = null;
+  }
+
+  // ===== Video Recording =====
+  function pickSupportedMimeType() {
+    const candidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+    for(const c of candidates){
+      try { if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; } catch(e) {}
+    }
+    return '';
+  }
+
+  async function startRecording(includeTokens=false) {
+    if(startRecording._recording) return;
+    startRecording._recording = true;
+
+    const previousShowInfo = showInfo;
+    showInfo = false;
+    if(includeTokens){
+      tokenListContainer.style.display = 'block';
+      document.getElementById('infoText').textContent = 'Info';
     }
 
-    // ===== Add updateMobileBalance function =====
-    function updateMobileBalance() {
-      if(isMobile){
-        tokenListContainer.style.display = 'block';
-        updateTokenListUI();
-      }
+    stopAnimation();
+    particles = cloneParticles();
+    drawFrame(0, true);
+
+    statusMsg.textContent = 'Preparing recording...';
+    recordBtn.disabled = true;
+    renderBtn.disabled = true;
+    connectBtn.disabled = true;
+    showProgressSmooth();
+    if(!animRequest) animate();
+
+    let stream;
+    try { stream = canvas.captureStream(30); } 
+    catch(err) { statusMsg.textContent = 'Recording not supported.'; cleanup(); return; }
+
+    const mime = pickSupportedMimeType();
+    let recorder;
+    try { recorder = mime ? new MediaRecorder(stream, {mimeType: mime}) : new MediaRecorder(stream); }
+    catch(err){ alert('MediaRecorder not available.'); cleanup(); return; }
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
+    recorder.onerror = (ev) => { console.error(ev); statusMsg.textContent = 'Recording error.'; };
+    recorder.onstart = () => { statusMsg.textContent = 'Recording...'; };
+    recorder.start();
+
+    const startTime = performance.now();
+    const duration = 20000;
+
+    function updateProgress(timestamp){
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      progressBar.style.transform = `scaleX(${progress})`;
+      const seconds = Math.floor(elapsed / 1000);
+      recordTimer.textContent = `Recording: ${seconds} / 20 s`;
+      if(elapsed < duration) requestAnimationFrame(updateProgress);
+      else try { recorder.stop(); } catch(e){ console.warn(e); }
     }
 
-    
+    requestAnimationFrame(updateProgress);
 
-   // ===== Call updateMobileBalance on mobile =====
-if(isMobile){
-  updateMobileBalance();
-}
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: chunks.length ? chunks[0].type : 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+      a.download = `wallet_visualization.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+
+      showInfo = previousShowInfo;
+      document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
+      tokenListContainer.style.display = showInfo ? 'block' : 'none';
+      updateTokenListUI();
+
+      statusMsg.textContent = 'Recording finished!';
+      recordTimer.textContent = 'Recording: 0 / 20 s';
+      hideProgressSmooth();
+      recordBtn.disabled = false;
+      renderBtn.disabled = false;
+      connectBtn.disabled = false;
+      startRecording._recording = false;
+    };
+
+    function cleanup() {
+      try { if(recorder && recorder.state === 'recording') recorder.stop(); } catch(e){}
+      showInfo = previousShowInfo;
+      document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
+      tokenListContainer.style.display = showInfo ? 'block' : 'none';
+      updateTokenListUI();
+      recordBtn.disabled = false;
+      renderBtn.disabled = false;
+      connectBtn.disabled = false;
+      hideProgressSmooth();
+      recordTimer.textContent = 'Recording: 0 / 20 s';
+      startRecording._recording = false;
+    }
+  }
+
+  // Event listener pogai “Record”
+  recordBtn.addEventListener('click', () => startRecording(true));
+
 
   </script>
 </body>
 </html>
+
 
 
 
