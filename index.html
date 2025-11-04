@@ -8,44 +8,25 @@
   <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 
-  <!-- NOTE: If you can provide SRI hashes for the below scripts, add integrity="sha384-..." and keep crossorigin. -->
   <style>
-    :root {
-      --bg: #000;
-      --muted: #9fb0c3;
-      --accentFrom: #4a90e2;
-      --accentTo: #9013fe;
-      --glass: rgba(255,255,255,0.03);
-      --success: #0ff;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      button, #fullscreenIcon, #toggleInfoIcon { transition: none !important; animation: none !important; }
-    }
-
-    body { font-family:'Inter',Arial,sans-serif; background:var(--bg); color:#fff; margin:0; padding:20px; position: relative; }
+    body { font-family:'Inter',Arial,sans-serif; background:#000; color:#fff; margin:0; padding:20px; position: relative; }
     .container { max-width:1400px; margin:auto; display:flex; flex-direction:column; align-items:center; gap:12px; }
     h1 { font-size:36px; margin:0; line-height:1; background:linear-gradient(90deg,#ffffff,#aaaaaa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; }
-    .subtitle { margin-top:4px; color:var(--muted); font-size:18px; text-align:center; }
+    .subtitle { margin-top:4px; color:#9fb0c3; font-size:18px; text-align:center; }
     .controls { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-    button { padding:12px 20px; border-radius:12px; border:none; cursor:pointer; background:linear-gradient(90deg,var(--accentFrom),var(--accentTo)); color:#fff; font-weight:700; font-size:16px; box-shadow:0 6px 18px rgba(0,0,0,0.45); transition: transform 0.2s, box-shadow 0.2s; }
+    button { padding:12px 20px; border-radius:12px; border:none; cursor:pointer; background:linear-gradient(90deg,#4a90e2,#9013fe); color:#fff; font-weight:700; font-size:16px; box-shadow:0 6px 18px rgba(0,0,0,0.45); transition: transform 0.2s, box-shadow 0.2s; }
     button:disabled { background:#444; cursor:not-allowed; box-shadow:0 6px 18px rgba(0,0,0,0.2); }
     button:hover:not(:disabled) { transform:translateY(-4px) scale(1.03); box-shadow:0 8px 22px rgba(0,0,0,0.65); }
-    .snapshot-container { width:100%; background:var(--bg); border-radius:14px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,0.6); position:relative; }
-    #snapshotCanvas { width:100%; border-radius:10px; border:1px solid var(--glass); display:block; margin-bottom:12px; background:transparent; }
-    #recordTimer { margin-top:6px; color:var(--success); font-weight:600; font-size:16px; text-align:center; }
+    .snapshot-container { width:100%; background:#000; border-radius:14px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,0.6); position:relative; }
+    #snapshotCanvas { width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.03); display:block; margin-bottom:12px; }
+    #recordTimer { margin-top:6px; color:#0ff; font-weight:600; font-size:16px; text-align:center; }
     #statusContainer { position: relative; width: 100%; height: 40px; margin-top: 8px; }
     .status { font-weight:600; font-size:16px; color:#fff; line-height:40px; text-align:center; }
     #progressBarContainer { position: absolute; top: 50%; left: 50%; width: 60%; height: 18px; background: rgba(255,255,255,0.1); border-radius: 6px; transform: translate(-50%, -50%); display: none; overflow: hidden; }
-    #progressBar { height: 100%; width: 100%; background: linear-gradient(90deg,var(--success),var(--accentFrom)); border-radius: 6px; transform: scaleX(0); transform-origin: left center; transition: transform 0.4s ease; }
-    #overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:999; }
-    #recordDropdown { display:none; position: fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#111; border:2px solid #555; border-radius:12px; padding:80px 20px 20px 20px; z-index:1000; min-width:360px; box-shadow:0 8px 24px rgba(0,0,0,0.7); text-align:center; overflow-y:auto; }
-    #recordDropdown button { width:100%; margin:16px 0; }
-    #dropdownClose { position:absolute; top:10px; right:10px; cursor:pointer; font-size:28px; font-weight:bold; color:#fff; background:none; border:none; padding:0; line-height:1; }
-    #fullscreenIcon { position:absolute; top:10px; right:10px; display:flex; align-items:center; cursor:pointer; color:var(--success); background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; transition: background 0.2s, transform 0.2s; z-index:10; user-select:none; }
+    #progressBar { height: 100%; width: 100%; background: linear-gradient(90deg,#0ff,#4a90e2); border-radius: 6px; transform: scaleX(0); transform-origin: left center; transition: transform 0.4s ease; }
+    #fullscreenIcon { position:absolute; top:10px; right:10px; display:flex; align-items:center; cursor:pointer; color:#0ff; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; transition: background 0.2s, transform 0.2s; z-index:10; user-select:none; }
     #fullscreenIcon:hover { background:rgba(0,255,255,0.2); transform: scale(1.05); }
-    #fullscreenText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
-    #toggleInfoIcon { position:absolute; top:10px; left:10px; display:flex; align-items:center; cursor:pointer; color:var(--success); background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; transition: background 0.2s, transform 0.2s; z-index:10; user-select:none; }
+    #toggleInfoIcon { position:absolute; top:10px; left:10px; display:flex; align-items:center; cursor:pointer; color:#0ff; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; transition: background 0.2s, transform 0.2s; z-index:10; user-select:none; }
     #toggleInfoIcon:hover { background:rgba(0,255,255,0.2); transform: scale(1.05); }
     #infoText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
     #accountDisplay { width:100%; word-break:break-word; margin-top:8px; font-size:16px; text-align:center; }
@@ -69,44 +50,39 @@
     }
     #tokenListContainer table { width:100%; border-collapse:collapse; }
     #tokenListContainer th, #tokenListContainer td { padding:6px 8px; text-align:left; font-size:13px; }
-    #tokenListContainer th { color:var(--success); font-weight:600; }
+    #tokenListContainer th { color:#0ff; font-weight:600; }
     #tokenListContainer tr:nth-child(even) td { background:rgba(255,255,255,0.05); }
     #tokenListContainer tr:nth-child(odd) td { background:rgba(255,255,255,0.02); }
     #tokenListContainer::-webkit-scrollbar { width:6px; }
-    #tokenListContainer::-webkit-scrollbar-thumb { background:var(--success); border-radius:3px; }
+    #tokenListContainer::-webkit-scrollbar-thumb { background:#0ff; border-radius:3px; }
     #tokenListContainer::-webkit-scrollbar-track { background:#222; border-radius:3px; }
-
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-    .toast { position: fixed; right: 20px; bottom: 20px; background: rgba(0,0,0,0.85); color: #fff; padding: 12px 16px; border-radius: 8px; z-index:2000; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
   </style>
 </head>
 
 <body>
-  <a class="sr-only" href="#mainContent" id="skipLink">Sākt ar saturu</a>
-
-  <div class="container" id="mainContent" role="main" aria-labelledby="appTitle">
+  <div class="container" role="main">
     <header>
-      <h1 id="appTitle">Dynamic Wallet Visualizer</h1>
+      <h1>Dynamic Wallet Visualizer</h1>
       <p class="subtitle">Watch your Ethereum assets come alive — Sepolia NFT Access</p>
     </header>
 
     <section class="controls" aria-label="Controls">
       <button id="connectBtn">Connect Wallet</button>
-      <button id="renderBtn" disabled aria-disabled="true">Render Snapshot</button>
-      <button id="recordBtn" disabled aria-disabled="true" aria-haspopup="dialog" aria-expanded="false">Record 20s HD Video</button>
+      <button id="renderBtn" disabled>Render Snapshot</button>
+      <button id="recordBtn" disabled>Record 20s HD Video</button>
     </section>
 
     <div id="accountDisplay" aria-live="polite">Connected account: —</div>
     <div id="statusContainer" aria-hidden="false">
       <div id="statusMsg" class="status" role="status" aria-live="polite"></div>
-      <div id="progressBarContainer" aria-hidden="true"><div id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0"></div></div>
+      <div id="progressBarContainer" aria-hidden="true"><div id="progressBar"></div></div>
     </div>
     <div id="recordTimer" aria-live="polite">Recording: 0 / 20 s</div>
 
     <section class="snapshot-container" aria-label="Snapshot">
       <canvas id="snapshotCanvas" width="1920" height="1080" aria-label="Visualization canvas"></canvas>
       <div id="fullscreenIcon" role="button" tabindex="0" aria-label="Toggle fullscreen">⤢ <span id="fullscreenText">Fullscreen</span></div>
-      <div id="toggleInfoIcon" role="button" tabindex="0" aria-pressed="true" aria-label="Toggle info">ℹ <span id="infoText">Info</span></div>
+      <div id="toggleInfoIcon" role="button" tabindex="0" aria-label="Toggle info">ℹ <span id="infoText">Info</span></div>
 
       <div id="tokenListContainer" aria-hidden="true">
         <table>
@@ -117,85 +93,17 @@
     </section>
   </div>
 
-  <div id="overlay" tabindex="-1" aria-hidden="true"></div>
+  <div id="overlay" tabindex="-1"></div>
 
-  <div id="recordDropdown" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="recordDialogTitle">
-    <button id="dropdownClose" aria-label="Close">&times;</button>
-    <h2 id="recordDialogTitle" class="sr-only">Record options</h2>
-    <button id="recordWithTokensBtn">Record video with token list</button>
-    <button id="recordWithoutTokensBtn">Record video without token list</button>
-  </div>
-
-  <!-- External libs (add integrity attributes if you have the SRI hashes) -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js" crossorigin="anonymous"></script>
+  <!-- External libs -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <script>
-    // ====== Configuration & safety notes ======
-    // IMPORTANT: Never ship sensitive API keys in front-end code.
-    // If you deploy, set providerRpcUrl server-side and only expose through a secure endpoint or env injection in build.
-    const NFT_CONTRACT = "0x1EF02c3Ed33a98c10F0bf1fd71e4D226e8e408A5";
-    const providerRpcUrl = "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY"; // placeholder — DO NOT use in production
-
-    // ====== Elements ======
-    const connectBtn = document.getElementById('connectBtn');
-    const renderBtn = document.getElementById('renderBtn');
-    const recordBtn = document.getElementById('recordBtn');
-    const accountDisplay = document.getElementById('accountDisplay');
-    const recordTimer = document.getElementById('recordTimer');
-    const statusMsg = document.getElementById('statusMsg');
-    const overlay = document.getElementById('overlay');
-    const recordDropdown = document.getElementById('recordDropdown');
-    const dropdownClose = document.getElementById('dropdownClose');
-    const recordWithTokensBtn = document.getElementById('recordWithTokensBtn');
-    const recordWithoutTokensBtn = document.getElementById('recordWithoutTokensBtn');
-    const fullscreenIcon = document.getElementById('fullscreenIcon');
-    const toggleInfoIcon = document.getElementById('toggleInfoIcon');
-    const progressBarContainer = document.getElementById('progressBarContainer');
-    const progressBar = document.getElementById('progressBar');
-    const tokenListContainer = document.getElementById('tokenListContainer');
-    const tokenListContent = document.getElementById('tokenListContent');
-
+    // ===== Canvas setup =====
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     const canvas = document.getElementById('snapshotCanvas');
     const ctx = canvas.getContext('2d');
-    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
-    // ====== State ======
-    let provider, signer, account, wcProvider;
-    let showInfo = true;
-    let tokens = [], ethBalance = 0, txCount = 0, particles = [], initialParticles = [], animRequest = null;
-    let walletSeed = 0;
-
-    // ====== Utilities ======
-    function showProgressSmooth(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; progressBar.setAttribute('aria-hidden','false'); }
-    function hideProgressSmooth(){ progressBar.style.transform='scaleX(1)'; progressBar.setAttribute('aria-hidden','true'); setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
-
-    function setStatus(text, isError=false){
-      statusMsg.textContent = text || '';
-      if(isError){ statusMsg.setAttribute('role','alert'); } else { statusMsg.setAttribute('role','status'); }
-    }
-
-    function showToast(msg, timeout=4000){
-      const t = document.createElement('div'); t.className='toast'; t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(()=>{ t.style.opacity = '0'; setTimeout(()=>t.remove(),300); }, timeout);
-    }
-
-    function hashStringToInt(str,mod=1000){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;} return h%mod; }
-    function seededRandomFloat(seedStr){ return hashStringToInt(seedStr,10000)/10000; }
-
-    // Safe JSON parse (returns {} on invalid JSON)
-    async function safeJson(res){
-      try{
-        const text = await res.text();
-        return text ? JSON.parse(text) : {};
-      }catch(e){
-        console.error('Invalid JSON from API', e);
-        return {};
-      }
-    }
-
-    // ====== Canvas resizing ======
     function resizeCanvas() {
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
@@ -209,7 +117,35 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // ====== Particles (unchanged big-O drawing logic as requested) ======
+    // ===== Variables =====
+    const NFT_CONTRACT = "0x1EF02c3Ed33a98c10F0bf1fd71e4D226e8e408A5";
+    const providerRpcUrl = "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY"; 
+    let provider, signer, account, wcProvider;
+    let showInfo = true;
+    let tokens=[], ethBalance=0, txCount=0, particles=[], initialParticles=[], animRequest=null;
+    let walletSeed=0;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const renderBtn = document.getElementById('renderBtn');
+    const recordBtn = document.getElementById('recordBtn');
+    const accountDisplay = document.getElementById('accountDisplay');
+    const recordTimer = document.getElementById('recordTimer');
+    const statusMsg = document.getElementById('statusMsg');
+    const overlay = document.getElementById('overlay');
+    const fullscreenIcon = document.getElementById('fullscreenIcon');
+    const toggleInfoIcon = document.getElementById('toggleInfoIcon');
+    const progressBarContainer = document.getElementById('progressBarContainer');
+    const progressBar = document.getElementById('progressBar');
+    const tokenListContainer = document.getElementById('tokenListContainer');
+    const tokenListContent = document.getElementById('tokenListContent');
+
+    // ===== Helpers =====
+    function showProgressSmooth(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; }
+    function hideProgressSmooth(){ progressBar.style.transform='scaleX(1)'; setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
+    function hashStringToInt(str,mod=1000){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;} return h%mod; }
+    function seededRandomFloat(seedStr){ return hashStringToInt(seedStr,10000)/10000; }
+
+    // ===== Particles =====
     async function initParticlesOnce(){
       initialParticles=[];
       const particleCount = Math.min(150,50+(tokens.length||0)*15);
@@ -228,7 +164,7 @@
     }
     function cloneParticles(){ return initialParticles.map(p=>({...p})); }
 
-    // ====== Drawing (kept behavior) ======
+    // ===== Draw frame =====
     function drawFrame(frame,showTokensFrame){
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
@@ -272,407 +208,41 @@
 
       if(showTokensFrame && showInfo){
         ctx.fillStyle='#0ff';
-        ctx.font='22px Inter, Arial, sans-serif';
+        ctx.font='22px Inter';
         ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`,10,80);
       }
     }
 
-    // ====== Token UI (DOM-safe, no unsanitized innerHTML) ======
+    // ===== Token UI =====
     function updateTokenListUI() {
-      tokenListContent.innerHTML = ''; // empty safely; content appended as text nodes below
-      if(!tokens || tokens.length===0){
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.setAttribute('colspan','2');
-        td.style.color = '#777';
-        td.textContent = 'No tokens';
-        tr.appendChild(td);
-        tokenListContent.appendChild(tr);
-        return;
-      }
+      if(!tokens || tokens.length===0){ tokenListContent.innerHTML='<tr><td colspan="2" style="color:#777;">No tokens</td></tr>'; return; }
+      tokenListContent.innerHTML='';
       tokens.forEach(t=>{
-        const tr = document.createElement('tr');
-        const addrTd = document.createElement('td');
-        addrTd.textContent = t.address || '';
-        addrTd.title = t.address || '';
-        const balTd = document.createElement('td');
-        balTd.textContent = (typeof t.balance === 'number') ? t.balance.toFixed(4) : String(t.balance);
-        tr.appendChild(addrTd);
-        tr.appendChild(balTd);
+        const tr=document.createElement('tr');
+        const addrTd=document.createElement('td'); addrTd.textContent=t.address; addrTd.title=t.address;
+        const balTd=document.createElement('td'); balTd.textContent=t.balance.toFixed(4);
+        tr.appendChild(addrTd); tr.appendChild(balTd);
         tokenListContent.appendChild(tr);
       });
     }
 
-    // ====== Wallet / Token / NFT fetching (saudzīga validācija) ======
-    async function checkNFTAccess(){
-      if(!account) return false;
-      showProgressSmooth();
-      try{
-        const res = await fetch(`/api/getNFTs?account=${encodeURIComponent(account)}`, { cache: 'no-store' });
-        if(!res.ok) return false;
-        const data = await safeJson(res);
-        return data?.ownsNFT === true;
-      }catch(err){
-        console.error(err);
-        return false;
-      }finally{ hideProgressSmooth(); }
+    // ===== Fullscreen & Info toggle =====
+    fullscreenIcon.onclick = () => {
+      if(!document.fullscreenElement) canvas.requestFullscreen();
+      else document.exitFullscreen();
     }
+    toggleInfoIcon.onclick = () => { showInfo = !showInfo; tokenListContainer.style.display = showInfo ? 'block':'none'; }
 
-    async function getTokens(){
-      if(!account) return [];
-      showProgressSmooth();
-      try{
-        const res = await fetch(`/api/getTokens?account=${encodeURIComponent(account)}`, { cache: 'no-store' });
-        if(!res.ok){ setStatus('Token API unavailable — fallback', true); return []; }
-        const data = await safeJson(res);
-        const rawBalances = data?.result?.tokenBalances || [];
-        return rawBalances.map(t=>{
-          const decimals = Number.isFinite(Number(t.tokenDecimals)) ? Number(t.tokenDecimals) : 18;
-          const balanceHex = t.tokenBalance || t.balance || "0x0";
-          let balance = 0;
-          try{ balance = Number(ethers.formatUnits(balanceHex, decimals)); }catch(e){ balance = 0; }
-          const address = (t.tokenAddress || t.contractAddress || '').toLowerCase();
-          return { address, balance, symbol: t.symbol || address };
-        }).filter(t=>t.balance>0);
-      }catch(e){
-        console.error(e);
-        setStatus('Failed fetching tokens', true);
-        return [];
-      }finally{ hideProgressSmooth(); }
+    // ===== Animation loop =====
+    function animate() {
+      drawFrame(performance.now()/16,true);
+      animRequest=requestAnimationFrame(animate);
     }
-
-    async function getAllNFTs(){
-      if(!account) return [];
-      showProgressSmooth();
-      try{
-        const res = await fetch(`/api/getAllNFTs?account=${encodeURIComponent(account)}`, { cache: 'no-store' });
-        if(!res.ok) return [];
-        const data = await safeJson(res);
-        const nfts = data?.nfts || [];
-        return nfts.map(nft => ({
-          address: nft.contract?.address || '',
-          symbol: nft.contract?.symbol || 'NFT',
-          balance: 1,
-          isNFT: true,
-          tokenId: nft?.id?.tokenId
-        }));
-      }catch(e){
-        console.error(e);
-        return [];
-      }finally{ hideProgressSmooth(); }
-    }
-
-    // ====== Connect Wallet ======
-    async function connectWallet(){
-      showProgressSmooth();
-      try{
-        // warn if provider RPC URL is a placeholder
-        if(providerRpcUrl.includes('YOUR_ALCHEMY_KEY')){
-          setStatus('Provider not configured (missing Alchemy key). WalletConnect may not work.', true);
-          showToast('Warning: provider RPC URL not configured (alchemy key missing).');
-        }
-
-        if(window.ethereum){
-          provider = new ethers.BrowserProvider(window.ethereum, "sepolia");
-          await provider.send("eth_requestAccounts", []);
-          signer = await provider.getSigner();
-          account = await signer.getAddress();
-        } else {
-          // WalletConnect fallback
-          try{
-            wcProvider = new WalletConnectProvider.default({ rpc: { 11155111: providerRpcUrl } });
-            await wcProvider.enable();
-            provider = new ethers.BrowserProvider(wcProvider, "sepolia");
-            signer = await provider.getSigner();
-            account = await signer.getAddress();
-          }catch(e){
-            console.error('WalletConnect failed', e);
-            setStatus('WalletConnect failed or not configured.', true);
-            hideProgressSmooth();
-            return;
-          }
-        }
-
-        accountDisplay.textContent = 'Connected account: ' + account;
-        walletSeed = hashStringToInt(account);
-
-        const hasNFT = await checkNFTAccess();
-        if(hasNFT){
-          renderBtn.disabled = false; renderBtn.removeAttribute('aria-disabled');
-          recordBtn.disabled = false; recordBtn.removeAttribute('aria-disabled');
-          setStatus('Wallet connected & NFT verified — access granted.');
-        } else {
-          renderBtn.disabled = true; renderBtn.setAttribute('aria-disabled','true');
-          recordBtn.disabled = true; recordBtn.setAttribute('aria-disabled','true');
-          setStatus('NFT not found — access denied.', true);
-          showToast('Access denied — required NFT not found.');
-        }
-      }catch(err){
-        console.error(err);
-        setStatus('Wallet connection failed.', true);
-        showToast('Wallet connection failed. Check console.');
-      }finally{ hideProgressSmooth(); }
-    }
-
-    // ====== Render Snapshot ======
-    async function renderSnapshot(){
-      if(!account) await connectWallet();
-      if(!provider || !account){ setStatus('Wallet not connected.', true); return; }
-
-      stopAnimation();
-      showProgressSmooth();
-      progressBar.style.transform='scaleX(0)';
-      setStatus('');
-
-      const steps=[
-        {name:'Fetching ETH balance', func: async()=>{ ethBalance=Number(ethers.formatEther(await provider.getBalance(account)))||0; }},
-        {name:'Fetching transaction count', func: async()=>{ txCount=Number(await provider.getTransactionCount(account))||0; }},
-        {name:'Fetching tokens', func: async()=>{ tokens=[...await getTokens()]; }},
-        {name:'Fetching NFTs', func: async()=>{ tokens=[...tokens,...await getAllNFTs()]; }},
-        {name:'Initializing particles', func: async()=>{ await initParticlesOnce(); particles=cloneParticles(); }}
-      ];
-
-      let currentStep=0, totalSteps=steps.length;
-      let visualProgress=0, running=true;
-
-      function animateProgress(){
-        if(!running) return;
-        const targetProgress=currentStep/totalSteps;
-        visualProgress+=(targetProgress-visualProgress)*0.05;
-        progressBar.style.transform=`scaleX(${visualProgress})`;
-        progressBar.setAttribute('aria-valuenow', String(visualProgress.toFixed(2)));
-        requestAnimationFrame(animateProgress);
-      }
-      requestAnimationFrame(animateProgress);
-
-      try{
-        for(const step of steps){
-          setStatus(step.name + '...');
-          await step.func();
-          currentStep++;
-        }
-
-        if(showInfo){ tokenListContainer.style.display='block'; tokenListContainer.setAttribute('aria-hidden','false'); updateTokenListUI(); }
-
-        running=false; progressBar.style.transform='scaleX(1)'; setStatus('Visualization running!');
-        hideProgressSmooth();
-        animate();
-      }catch(e){
-        running=false; hideProgressSmooth(); console.error(e); setStatus('Error rendering visualization.', true); showToast('Render failed. Check console.');
-      }
-    }
-
-    // ====== Animation loop ======
-    function animate(frame=0){ drawFrame(frame,true); animRequest = requestAnimationFrame(()=>animate(frame+1)); }
-    function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
-
-    // ====== Keyboard & UI handlers ======
-    connectBtn.addEventListener('click', connectWallet);
-    renderBtn.addEventListener('click', renderSnapshot);
-    fullscreenIcon.addEventListener('click', ()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
-    fullscreenIcon.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); fullscreenIcon.click(); } });
-
-    toggleInfoIcon.addEventListener('click', ()=>{
-      showInfo = !showInfo;
-      document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
-      toggleInfoIcon.setAttribute('aria-pressed', String(showInfo));
-      tokenListContainer.style.display = showInfo ? 'block' : 'none';
-      tokenListContainer.setAttribute('aria-hidden', showInfo ? 'false' : 'true');
-      if(showInfo) updateTokenListUI();
-    });
-
-    // ====== MediaRecorder support detection & helpers ======
-    function pickSupportedMimeType(){
-      const candidates=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
-      for(const c of candidates){
-        try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; }catch(e){}
-      }
-      return '';
-    }
-
-    // If the browser does not support MediaRecorder with a known mime, disable record button
-    (function checkRecordingSupport(){
-      const mime = pickSupportedMimeType();
-      if(!mime){
-        // attempt to see if MediaRecorder exists at all
-        if(typeof MediaRecorder === 'undefined'){
-          recordBtn.disabled = true;
-          recordBtn.setAttribute('aria-disabled','true');
-          setStatus('Recording not supported in this browser.', true);
-        } else {
-          // MediaRecorder exists but no known mime supported
-          setStatus('No supported video codec available for recording in this browser.', true);
-          showToast('Recording not supported (no known codec).');
-          recordBtn.disabled = true;
-          recordBtn.setAttribute('aria-disabled','true');
-        }
-      }
-    })();
-
-    // ====== Recording (with safer UX & cleanup) ======
-    async function startRecording(includeTokens=false){
-      if(startRecording._recording) return;
-      startRecording._recording = true;
-      const previousShowInfo = showInfo;
-
-      // Show tokens on canvas if requested
-      showInfo = false;
-      if(includeTokens){ tokenListContainer.style.display = 'block'; document.getElementById('infoText').textContent = 'Info'; }
-
-      stopAnimation();
-      particles = cloneParticles();
-      drawFrame(0,true);
-      setStatus('Preparing recording...');
-      recordBtn.disabled = true; renderBtn.disabled = true; connectBtn.disabled = true;
-      showProgressSmooth(); if(!animRequest) animate();
-
-      let stream;
-      try{ stream = canvas.captureStream(30); } catch(err){
-        setStatus('Recording not supported (captureStream failed).', true);
-        cleanupAfterRecording();
-        return;
-      }
-
-      const mime = pickSupportedMimeType();
-      if(!mime){
-        setStatus('No supported recording mime type available.', true);
-        cleanupAfterRecording();
-        return;
-      }
-
-      let recorder;
-      try{ recorder = new MediaRecorder(stream, { mimeType: mime }); }catch(err){
-        console.error('MediaRecorder init failed', err);
-        setStatus('MediaRecorder not available.', true);
-        cleanupAfterRecording();
-        return;
-      }
-
-      const chunks = [];
-      recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
-      recorder.onerror = (ev) => { console.error(ev); setStatus('Recording error.', true); };
-      recorder.onstart = () => { setStatus('Recording...'); };
-
-      try{ recorder.start(); }catch(e){ console.error(e); setStatus('Failed to start recorder.', true); cleanupAfterRecording(); return; }
-
-      const startTime = performance.now(), duration = 20000;
-      function updateProgress(timestamp){
-        const elapsed = timestamp - startTime;
-        const progress = Math.min(elapsed/duration, 1);
-        progressBar.style.transform = `scaleX(${progress})`;
-        progressBar.setAttribute('aria-valuenow', String(progress.toFixed(2)));
-        const seconds = Math.floor(elapsed/1000);
-        recordTimer.textContent = `Recording: ${seconds} / 20 s`;
-        if(elapsed < duration) requestAnimationFrame(updateProgress);
-        else try{ recorder.stop(); }catch(e){}
-      }
-      requestAnimationFrame(updateProgress);
-
-      recorder.onstop = () => {
-        try{
-          const blob = new Blob(chunks, { type: chunks.length ? chunks[0].type : mime });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a'); a.style.display='none'; a.href = url;
-          const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
-          a.download = `wallet_visualization.${ext}`; document.body.appendChild(a); a.click();
-          setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-          setStatus('Recording finished!');
-          showToast('Recording finished and downloaded.');
-        }catch(e){
-          console.error('Saving recording failed', e);
-          setStatus('Saving recording failed.', true);
-        } finally {
-          cleanupAfterRecording();
-        }
-      };
-
-      function cleanupAfterRecording(){
-        try{ if(recorder && recorder.state === 'recording') recorder.stop(); }catch(e){}
-        showInfo = previousShowInfo;
-        document.getElementById('infoText').textContent = showInfo ? 'Info' : 'Hidden';
-        tokenListContainer.style.display = showInfo ? 'block' : 'none';
-        tokenListContainer.setAttribute('aria-hidden', showInfo ? 'false' : 'true');
-        updateTokenListUI();
-        recordBtn.disabled = false; renderBtn.disabled = false; connectBtn.disabled = false;
-        hideProgressSmooth(); recordTimer.textContent = 'Recording: 0 / 20 s';
-        startRecording._recording = false;
-      }
-    }
-
-    // Basic cleanup function for early exits
-    function cleanupAfterRecording(){
-      showInfo = true;
-      tokenListContainer.style.display = 'block';
-      tokenListContainer.setAttribute('aria-hidden', 'false');
-      updateTokenListUI();
-      recordBtn.disabled = false; renderBtn.disabled = false; connectBtn.disabled = false;
-      hideProgressSmooth(); recordTimer.textContent = 'Recording: 0 / 20 s';
-      startRecording._recording = false;
-    }
-
-    // Wire record button to open dialog with focus trap
-    recordBtn.addEventListener('click', openRecordDialog);
-
-    recordWithTokensBtn.addEventListener('click', ()=>{ closeRecordDialog(); startRecording(true); });
-    recordWithoutTokensBtn.addEventListener('click', ()=>{ closeRecordDialog(); startRecording(false); });
-
-    dropdownClose.addEventListener('click', closeRecordDialog);
-    overlay.addEventListener('click', closeRecordDialog);
-
-    // ====== Dialog open/close with focus trap & accessibility ======
-    function openRecordDialog(){
-      if(recordBtn.disabled) return;
-      overlay.style.display = 'block';
-      overlay.setAttribute('aria-hidden','false');
-      recordDropdown.style.display = 'block';
-      recordDropdown.setAttribute('aria-hidden','false');
-      recordBtn.setAttribute('aria-expanded','true');
-      document.body.style.overflow = 'hidden';
-      // Focus first interactive element in dialog
-      const focusable = getFocusableElements(recordDropdown);
-      if(focusable.length) focusable[0].focus();
-
-      // key handler for trap + escape
-      function handleKey(e){
-        if(e.key === 'Escape'){ e.preventDefault(); closeRecordDialog(); return; }
-        if(e.key === 'Tab' && focusable.length){
-          const idx = focusable.indexOf(document.activeElement);
-          if(e.shiftKey && idx === 0){ e.preventDefault(); focusable[focusable.length-1].focus(); }
-          else if(!e.shiftKey && idx === focusable.length-1){ e.preventDefault(); focusable[0].focus(); }
-        }
-      }
-      recordDropdown._keyHandler = handleKey;
-      document.addEventListener('keydown', handleKey);
-    }
-
-    function closeRecordDialog(){
-      overlay.style.display = 'none';
-      overlay.setAttribute('aria-hidden','true');
-      recordDropdown.style.display = 'none';
-      recordDropdown.setAttribute('aria-hidden','true');
-      recordBtn.setAttribute('aria-expanded','false');
-      document.body.style.overflow = '';
-      if(recordDropdown._keyHandler) document.removeEventListener('keydown', recordDropdown._keyHandler);
-      // return focus to the record button
-      recordBtn.focus();
-    }
-
-    function getFocusableElements(container){
-      const selectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-      return Array.from(container.querySelectorAll(selectors)).filter(el => el.offsetParent !== null);
-    }
-
-    // also allow enter-space activation for icons
-    toggleInfoIcon.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleInfoIcon.click(); } });
-
-    // ====== Init: small status ======
-    setStatus('Ready. Connect wallet to begin.');
-
-    // ====== Optional: cleanup on unload ======
-    window.addEventListener('beforeunload', ()=>{ try{ if(wcProvider && wcProvider.disconnect) wcProvider.disconnect(); }catch{} });
+    animate();
   </script>
 </body>
 </html>
+
 
 
 
