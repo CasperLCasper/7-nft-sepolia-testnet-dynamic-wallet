@@ -180,53 +180,70 @@
     function cloneParticles(){ return initialParticles.map(p=>({...p})); }
 
     // ===== Draw frame =====
-    function drawFrame(frame,showTokensFrame){
-      const dpr = window.devicePixelRatio || 1;
-      const scale = isMobile ? 0.6 : 1;
-      const W = canvas.width/(dpr*scale);
-      const H = canvas.height/(dpr*scale);
-      ctx.clearRect(0,0,W,H);
-      ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-      const cx0=W/2, cy0=H/2;
+function drawFrame(frame, showTokensFrame){
+    const dpr = window.devicePixelRatio || 1;
+    const scale = isMobile ? 0.6 : 1;
+    const W = canvas.width/(dpr*scale);
+    const H = canvas.height/(dpr*scale);
 
-      for(let i=0;i<particles.length;i++){
-        for(let j=i+1;j<particles.length;j++){
-          const p1=particles[i], p2=particles[j];
-          const x1=cx0+Math.cos(p1.angle)*p1.radius;
-          const y1=cy0+Math.sin(p1.angle)*p1.radius;
-          const x2=cx0+Math.cos(p2.angle)*p2.radius;
-          const y2=cy0+Math.sin(p2.angle)*p2.radius;
-          const dx=x1-x2, dy=y1-y2;
-          const dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<200){
-            const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
-            const alpha=0.2+0.4*avgBalance*(1-dist/200);
-            ctx.lineWidth=1.5+2*avgBalance;
-            const txFactor=Math.log(txCount+1)/10;
-            const hue=(p1.hue+p2.hue)/2+frame*0.4*txFactor;
-            ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
-            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-          }
+    // ===== Trail / Motion blur efekts =====
+    ctx.fillStyle = 'rgba(0,0,0,0.1)'; // neliels caurspīdīgums rada blur trail
+    ctx.fillRect(0,0,W,H);
+
+    const cx0 = W/2, cy0 = H/2;
+
+    // ===== Līnijas starp partikļiem ar dinamisku krāsu =====
+    ctx.globalCompositeOperation = 'lighter'; // glow efekts
+    for(let i=0; i<particles.length; i++){
+        for(let j=i+1; j<particles.length; j++){
+            const p1=particles[i], p2=particles[j];
+            const x1=cx0+Math.cos(p1.angle)*p1.radius;
+            const y1=cy0+Math.sin(p1.angle)*p1.radius;
+            const x2=cx0+Math.cos(p2.angle)*p2.radius;
+            const y2=cy0+Math.sin(p2.angle)*p2.radius;
+            const dx=x1-x2, dy=y1-y2;
+            const dist=Math.sqrt(dx*dx+dy*dy);
+            if(dist<200){
+                const avgBalance = (Math.min(p1.token.balance,20) + Math.min(p2.token.balance,20))/40;
+                const alpha = 0.2 + 0.4*avgBalance*(1 - dist/200);
+                const hue = ((p1.hue + p2.hue)/2 + frame*0.5) % 360; // krāsu dinamika
+                ctx.strokeStyle = `hsla(${hue},100%,70%,${alpha})`;
+                ctx.lineWidth = 1.5 + 2*avgBalance;
+                ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+            }
         }
-      }
+    }
 
-      particles.forEach(p=>{
-        p.angle+=p.speed;
-        const cx=cx0+Math.cos(p.angle)*p.radius;
-        const cy=cy0+Math.sin(p.angle)*p.radius;
-        const gradient=ctx.createRadialGradient(cx,cy,0,cx,cy,p.r*2.5);
-        gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
-        gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
-        gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
-        ctx.fillStyle=gradient; ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
-      });
+    // ===== Partiklu zīmēšana ar pulsēšanu =====
+    particles.forEach(p=>{
+        p.angle += p.speed;
 
-      if(showTokensFrame && showInfo){
+        // Pulsēšana pēc ETH/NFT statusa
+        const pulse = 0.5 + 0.5*Math.sin(frame*0.05 + hashStringToInt(p.token.address)%100);
+        const radius = p.r * pulse; // pulsējošs radius
+
+        const cx = cx0 + Math.cos(p.angle)*p.radius;
+        const cy = cy0 + Math.sin(p.angle)*p.radius;
+
+        const gradient = ctx.createRadialGradient(cx,cy,0,cx,cy,radius*2.5);
+        gradient.addColorStop(0, `hsla(${p.hue},100%,70%,1)`);
+        gradient.addColorStop(0.5, `hsla(${p.hue+20},100%,60%,0.9)`);
+        gradient.addColorStop(1, `hsla(${p.hue+40},100%,40%,0.5)`);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    ctx.globalCompositeOperation = 'source-over'; // atgriež default režīmu
+
+    // ===== Info teksts =====
+    if(showTokensFrame && showInfo){
         ctx.fillStyle='#0ff';
         ctx.font='22px Inter';
         ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`,10,80);
-      }
     }
+}
 
     // ===== Token UI =====
     function updateTokenListUI() {
