@@ -4,10 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dynamic Wallet Visualizer — Sepolia NFT Access</title>
-
-  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-
   <style>
     body { font-family:'Inter',Arial,sans-serif; background:#000; color:#fff; margin:0; padding:20px; position: relative; }
     .container { max-width:1400px; margin:auto; display:flex; flex-direction:column; align-items:center; gap:12px; }
@@ -35,7 +32,6 @@
     #toggleInfoIcon:hover { background:rgba(0,255,255,0.2); transform: scale(1.05); }
     #infoText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
     #accountDisplay { width:100%; word-break:break-word; margin-top:8px; font-size:16px; text-align:center; }
-
     #tokenListContainer {
       display:none;
       position:absolute;
@@ -63,7 +59,6 @@
     #tokenListContainer::-webkit-scrollbar-track { background:#222; border-radius:3px; }
   </style>
 </head>
-
 <body>
   <div class="container" role="main">
     <header>
@@ -106,7 +101,6 @@
     <button id="recordWithoutTokensBtn">Record video without token list</button>
   </div>
 
-  <!-- External libs -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
@@ -118,12 +112,12 @@
     function resizeCanvas() {
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
-      canvas.width = Math.round(1920*dpr*scale);
-      canvas.height = Math.round(1080*dpr*scale);
+      canvas.width = Math.round(1920 * dpr * scale);
+      canvas.height = Math.round(1080 * dpr * scale);
       canvas.style.width = '100%';
       canvas.style.height = 'auto';
-      ctx.setTransform(1,0,0,1,0,0);
-      ctx.scale(dpr*scale, dpr*scale);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr * scale, dpr * scale);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
@@ -179,46 +173,77 @@
     }
     function cloneParticles(){ return initialParticles.map(p=>({...p})); }
 
-    // ===== Draw frame =====
-    function drawFrame(frame,showTokensFrame){
+    // ===== Optimized drawFrame =====
+    function drawFrame(frame, showTokensFrame) {
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
-      const W = canvas.width/(dpr*scale);
-      const H = canvas.height/(dpr*scale);
-      ctx.clearRect(0,0,W,H);
-      ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-      const cx0=W/2, cy0=H/2;
+      const W = canvas.width / (dpr * scale);
+      const H = canvas.height / (dpr * scale);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
 
-      for(let i=0;i<particles.length;i++){
-        for(let j=i+1;j<particles.length;j++){
-          const p1=particles[i], p2=particles[j];
-          const x1=cx0+Math.cos(p1.angle)*p1.radius;
-          const y1=cy0+Math.sin(p1.angle)*p1.radius;
-          const x2=cx0+Math.cos(p2.angle)*p2.radius;
-          const y2=cy0+Math.sin(p2.angle)*p2.radius;
-          const dx=x1-x2, dy=y1-y2;
-          const dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<200){
-            const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
-            const alpha=0.2+0.4*avgBalance*(1-dist/200);
-            ctx.lineWidth=1.5+2*avgBalance;
-            const txFactor=Math.log(txCount+1)/10;
-            const hue=(p1.hue+p2.hue)/2+frame*0.4*txFactor;
-            ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
-            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      const cx0 = W / 2, cy0 = H / 2;
+
+      // Precompute particle positions
+      particles.forEach(p => { p.cx = cx0 + Math.cos(p.angle) * p.radius; p.cy = cy0 + Math.sin(p.angle) * p.radius; });
+
+      // Grid partitioning
+      const gridSize = 200;
+      const grid = new Map();
+      particles.forEach(p => {
+        const gx = Math.floor(p.cx / gridSize);
+        const gy = Math.floor(p.cy / gridSize);
+        const key = `${gx},${gy}`;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key).push(p);
+      });
+
+      // Draw lines only for nearby particles
+      grid.forEach((cellParticles, key) => {
+        const [gx, gy] = key.split(',').map(Number);
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const neighborKey = `${gx + dx},${gy + dy}`;
+            if (!grid.has(neighborKey)) continue;
+            const neighbors = grid.get(neighborKey);
+            cellParticles.forEach(p1 => {
+              let lineCount = 0;
+              for (let p2 of neighbors) {
+                if (p1===p2) continue;
+                const dx = p1.cx - p2.cx;
+                const dy = p1.cy - p2.cy;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if(dist<200){
+                  const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
+                  const alpha=0.2+0.4*avgBalance*(1-dist/200);
+                  const txFactor=Math.log(txCount+1)/10;
+                  const hue=(p1.hue+p2.hue)/2 + frame*0.4*txFactor;
+                  ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
+                  ctx.lineWidth=1.5+2*avgBalance;
+                  ctx.beginPath();
+                  ctx.moveTo(p1.cx,p1.cy);
+                  ctx.lineTo(p2.cx,p2.cy);
+                  ctx.stroke();
+                  if(++lineCount>=5) break;
+                }
+              }
+            });
           }
         }
-      }
+      });
 
+      // Draw particles
       particles.forEach(p=>{
-        p.angle+=p.speed;
-        const cx=cx0+Math.cos(p.angle)*p.radius;
-        const cy=cy0+Math.sin(p.angle)*p.radius;
-        const gradient=ctx.createRadialGradient(cx,cy,0,cx,cy,p.r*2.5);
+        p.angle += p.speed;
+        const gradient=ctx.createRadialGradient(p.cx,p.cy,0,p.cx,p.cy,p.r*2.5);
         gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
         gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
         gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
-        ctx.fillStyle=gradient; ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(p.cx,p.cy,p.r,0,Math.PI*2);
+        ctx.fill();
       });
 
       if(showTokensFrame && showInfo){
@@ -228,238 +253,247 @@
       }
     }
 
-    // ===== Token UI =====
-    function updateTokenListUI() {
-      if(!tokens || tokens.length===0){ tokenListContent.innerHTML='<tr><td colspan="2" style="color:#777;">No tokens</td></tr>'; return; }
-      tokenListContent.innerHTML='';
-      tokens.forEach(t=>{
-        const tr=document.createElement('tr');
-        const addrTd=document.createElement('td'); addrTd.textContent=t.address; addrTd.title=t.address;
-        const balTd=document.createElement('td'); balTd.textContent=t.balance.toFixed(4);
-        tr.appendChild(addrTd); tr.appendChild(balTd);
-        tokenListContent.appendChild(tr);
-      });
+    // ===== Animation loop =====
+    function animate(frame=0){
+      drawFrame(frame,true);
+      animRequest = requestAnimationFrame(()=>animate(frame+1));
+    }
+    function stopAnimation(){ if(animRequest){ cancelAnimationFrame(animRequest); animRequest=null; } }
+
+    // ===== Connect Wallet, Render Snapshot, Token UI, Recording etc. =====
+   // ===== Token UI =====
+function updateTokenListUI() {
+  if(!tokens || tokens.length===0){
+    tokenListContent.innerHTML='<tr><td colspan="2" style="color:#777;">No tokens</td></tr>';
+    return;
+  }
+  tokenListContent.innerHTML='';
+  tokens.forEach(t=>{
+    const tr=document.createElement('tr');
+    const addrTd=document.createElement('td'); addrTd.textContent=t.address; addrTd.title=t.address;
+    const balTd=document.createElement('td'); balTd.textContent=t.balance.toFixed(4);
+    tr.appendChild(addrTd); tr.appendChild(balTd);
+    tokenListContent.appendChild(tr);
+  });
+}
+
+// ===== Wallet & NFT =====
+async function checkNFTAccess(){
+  if(!account) return false;
+  showProgressSmooth();
+  try{
+    const res=await fetch(`/api/getNFTs?account=${encodeURIComponent(account)}`);
+    const data=await res.json();
+    return data?.ownsNFT===true;
+  }catch(err){ console.error(err); return false; }
+  finally{ hideProgressSmooth(); }
+}
+
+async function getTokens(){
+  if(!account) return [];
+  showProgressSmooth();
+  try{
+    const res=await fetch(`/api/getTokens?account=${encodeURIComponent(account)}`);
+    if(!res.ok){ statusMsg.textContent='Token API unavailable — fallback'; return []; }
+    const data=await res.json();
+    if(!data?.result?.tokenBalances) return [];
+    return data.result.tokenBalances.map(t=>{
+      const decimals=t.tokenDecimals!=null?Number(t.tokenDecimals):18;
+      const balance=Number(ethers.formatUnits(t.tokenBalance||"0x0",decimals));
+      const address=(t.tokenAddress||t.contractAddress||"").toLowerCase();
+      return {address,balance,symbol:t.symbol||address};
+    }).filter(t=>t.balance>0);
+  }catch(e){ console.error(e); statusMsg.textContent='Failed fetching tokens'; return []; }
+  finally{ hideProgressSmooth(); }
+}
+
+async function getAllNFTs(){
+  if(!account) return [];
+  showProgressSmooth();
+  try{
+    const res=await fetch(`/api/getAllNFTs?account=${encodeURIComponent(account)}`);
+    if(!res.ok) return [];
+    const data=await res.json();
+    if(!data?.nfts) return [];
+    return data.nfts.map(nft=>({
+      address:nft.contract.address,
+      symbol:nft.contract.symbol||'NFT',
+      balance:1,
+      isNFT:true,
+      tokenId:nft.id.tokenId
+    }));
+  }catch(e){ console.error(e); return []; }
+  finally{ hideProgressSmooth(); }
+}
+
+// ===== Connect Wallet =====
+async function connectWallet(){
+  showProgressSmooth();
+  try{
+    if(window.ethereum){
+      provider=new ethers.BrowserProvider(window.ethereum,"sepolia");
+      await provider.send("eth_requestAccounts",[]);
+      signer=await provider.getSigner();
+      account=await signer.getAddress();
+    } else {
+      wcProvider=new WalletConnectProvider.default({ rpc:{11155111:providerRpcUrl} });
+      await wcProvider.enable();
+      provider=new ethers.BrowserProvider(wcProvider,"sepolia");
+      signer=await provider.getSigner();
+      account=await signer.getAddress();
     }
 
-    // ===== Wallet & NFT =====
-    async function checkNFTAccess(){
-      if(!account) return false;
-      showProgressSmooth();
-      try{
-        const res=await fetch(`/api/getNFTs?account=${encodeURIComponent(account)}`);
-        const data=await res.json();
-        return data?.ownsNFT===true;
-      }catch(err){ console.error(err); return false; }
-      finally{ hideProgressSmooth(); }
+    accountDisplay.textContent='Connected account: '+account;
+    walletSeed=hashStringToInt(account);
+
+    const hasNFT = await checkNFTAccess();
+    if(hasNFT){
+      renderBtn.disabled=false;
+      recordBtn.disabled=false;
+      statusMsg.textContent='Wallet connected & NFT verified — access granted.';
+    } else {
+      renderBtn.disabled=true;
+      recordBtn.disabled=true;
+      statusMsg.textContent='NFT not found — access denied.';
+      alert('Access denied — required NFT not found.');
     }
 
-    async function getTokens(){
-      if(!account) return [];
-      showProgressSmooth();
-      try{
-        const res=await fetch(`/api/getTokens?account=${encodeURIComponent(account)}`);
-        if(!res.ok){ statusMsg.textContent='Token API unavailable — fallback'; return []; }
-        const data=await res.json();
-        if(!data?.result?.tokenBalances) return [];
-        return data.result.tokenBalances.map(t=>{
-          const decimals=t.tokenDecimals!=null?Number(t.tokenDecimals):18;
-          const balance=Number(ethers.formatUnits(t.tokenBalance||"0x0",decimals));
-          const address=(t.tokenAddress||t.contractAddress||"").toLowerCase();
-          return {address,balance,symbol:t.symbol||address};
-        }).filter(t=>t.balance>0);
-      }catch(e){ console.error(e); statusMsg.textContent='Failed fetching tokens'; return []; }
-      finally{ hideProgressSmooth(); }
+  }catch(err){
+    console.error(err);
+    statusMsg.textContent='Wallet connection failed.';
+    alert('Wallet connection failed. Retry.');
+  }finally{ hideProgressSmooth(); }
+}
+
+// ===== Render Snapshot =====
+async function renderSnapshot(){
+  if(!account) await connectWallet();
+  if(!provider || !account){ statusMsg.textContent='Wallet not connected.'; return; }
+
+  stopAnimation();
+  showProgressSmooth();
+  progressBar.style.transform='scaleX(0)';
+  statusMsg.textContent='';
+
+  const steps=[
+    {name:'Fetching ETH balance', func: async()=>{ ethBalance=Number(ethers.formatEther(await provider.getBalance(account)))||0; }},
+    {name:'Fetching transaction count', func: async()=>{ txCount=Number(await provider.getTransactionCount(account))||0; }},
+    {name:'Fetching tokens', func: async()=>{ tokens=[...await getTokens()]; }},
+    {name:'Fetching NFTs', func: async()=>{ tokens=[...tokens,...await getAllNFTs()]; }},
+    {name:'Initializing particles', func: async()=>{ await initParticlesOnce(); particles=cloneParticles(); }}
+  ];
+
+  let currentStep=0, totalSteps=steps.length;
+  let visualProgress=0, running=true;
+
+  function animateProgress(){
+    if(!running) return;
+    const targetProgress=currentStep/totalSteps;
+    visualProgress+=(targetProgress-visualProgress)*0.05;
+    progressBar.style.transform=`scaleX(${visualProgress})`;
+    requestAnimationFrame(animateProgress);
+  }
+  requestAnimationFrame(animateProgress);
+
+  try{
+    for(const step of steps){
+      statusMsg.textContent=step.name+'...';
+      await step.func();
+      currentStep++;
     }
 
-    async function getAllNFTs(){
-      if(!account) return [];
-      showProgressSmooth();
-      try{
-        const res=await fetch(`/api/getAllNFTs?account=${encodeURIComponent(account)}`);
-        if(!res.ok) return [];
-        const data=await res.json();
-        if(!data?.nfts) return [];
-        return data.nfts.map(nft=>({
-          address:nft.contract.address,
-          symbol:nft.contract.symbol||'NFT',
-          balance:1,
-          isNFT:true,
-          tokenId:nft.id.tokenId
-        }));
-      }catch(e){ console.error(e); return []; }
-      finally{ hideProgressSmooth(); }
-    }
+    if(showInfo){ tokenListContainer.style.display='block'; updateTokenListUI(); }
 
-    // ===== Connect Wallet =====
-    async function connectWallet(){
-      showProgressSmooth();
-      try{
-        if(window.ethereum){
-          provider=new ethers.BrowserProvider(window.ethereum,"sepolia");
-          await provider.send("eth_requestAccounts",[]);
-          signer=await provider.getSigner();
-          account=await signer.getAddress();
-        } else {
-          wcProvider=new WalletConnectProvider.default({ rpc:{11155111:providerRpcUrl} });
-          await wcProvider.enable();
-          provider=new ethers.BrowserProvider(wcProvider,"sepolia");
-          signer=await provider.getSigner();
-          account=await signer.getAddress();
-        }
+    running=false; progressBar.style.transform='scaleX(1)'; statusMsg.textContent='Visualization running!';
+    hideProgressSmooth();
+    animate();
+  }catch(e){ running=false; hideProgressSmooth(); console.error(e); statusMsg.textContent='Error rendering visualization.'; alert('Render failed. Check console.'); }
+}
 
-        accountDisplay.textContent='Connected account: '+account;
-        walletSeed=hashStringToInt(account);
+// ===== Event Listeners =====
+connectBtn.addEventListener('click', connectWallet);
+renderBtn.addEventListener('click', renderSnapshot);
+fullscreenIcon.addEventListener('click', ()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
+toggleInfoIcon.addEventListener('click', ()=>{
+  showInfo=!showInfo;
+  document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+  tokenListContainer.style.display=showInfo?'block':'none';
+  if(showInfo) updateTokenListUI();
+});
 
-        const hasNFT = await checkNFTAccess();
-        if(hasNFT){
-          renderBtn.disabled=false;
-          recordBtn.disabled=false;
-          statusMsg.textContent='Wallet connected & NFT verified — access granted.';
-        } else {
-          renderBtn.disabled=true;
-          recordBtn.disabled=true;
-          statusMsg.textContent='NFT not found — access denied.';
-          alert('Access denied — required NFT not found.');
-        }
+// ===== Video Recording =====
+function pickSupportedMimeType(){
+  const candidates=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+  for(const c of candidates){ try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; }catch(e){} }
+  return '';
+}
 
-      }catch(err){
-        console.error(err);
-        statusMsg.textContent='Wallet connection failed.';
-        alert('Wallet connection failed. Retry.');
-      }finally{ hideProgressSmooth(); }
-    }
+async function startRecording(includeTokens=false){
+  if(startRecording._recording) return;
+  startRecording._recording=true;
+  const previousShowInfo=showInfo;
+  showInfo=false;
+  if(includeTokens){ tokenListContainer.style.display='block'; document.getElementById('infoText').textContent='Info'; }
+  stopAnimation(); particles=cloneParticles(); drawFrame(0,true);
+  statusMsg.textContent='Preparing recording...';
+  recordBtn.disabled=true; renderBtn.disabled=true; connectBtn.disabled=true;
+  showProgressSmooth(); if(!animRequest) animate();
 
-    // ===== Render Snapshot =====
-    async function renderSnapshot(){
-      if(!account) await connectWallet();
-      if(!provider || !account){ statusMsg.textContent='Wallet not connected.'; return; }
+  let stream; try{ stream=canvas.captureStream(30); }catch(err){ statusMsg.textContent='Recording not supported.'; cleanup(); return; }
 
-      stopAnimation();
-      showProgressSmooth();
-      progressBar.style.transform='scaleX(0)';
-      statusMsg.textContent='';
+  const mime=pickSupportedMimeType(); let recorder;
+  try{ recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(err){ alert('MediaRecorder not available.'); cleanup(); return; }
 
-      const steps=[
-        {name:'Fetching ETH balance', func: async()=>{ ethBalance=Number(ethers.formatEther(await provider.getBalance(account)))||0; }},
-        {name:'Fetching transaction count', func: async()=>{ txCount=Number(await provider.getTransactionCount(account))||0; }},
-        {name:'Fetching tokens', func: async()=>{ tokens=[...await getTokens()]; }},
-        {name:'Fetching NFTs', func: async()=>{ tokens=[...tokens,...await getAllNFTs()]; }},
-        {name:'Initializing particles', func: async()=>{ await initParticlesOnce(); particles=cloneParticles(); }}
-      ];
+  const chunks=[]; recorder.ondataavailable=(e)=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  recorder.onerror=(ev)=>{ console.error(ev); statusMsg.textContent='Recording error.'; };
+  recorder.onstart=()=>{ statusMsg.textContent='Recording...'; };
+  recorder.start();
 
-      let currentStep=0, totalSteps=steps.length;
-      let visualProgress=0, running=true;
+  const startTime=performance.now(), duration=20000;
+  function updateProgress(timestamp){
+    const elapsed=timestamp-startTime;
+    const progress=Math.min(elapsed/duration,1);
+    progressBar.style.transform=`scaleX(${progress})`;
+    const seconds=Math.floor(elapsed/1000);
+    recordTimer.textContent=`Recording: ${seconds} / 20 s`;
+    if(elapsed<duration) requestAnimationFrame(updateProgress); else try{ recorder.stop(); }catch(e){}
+  }
+  requestAnimationFrame(updateProgress);
 
-      function animateProgress(){
-        if(!running) return;
-        const targetProgress=currentStep/totalSteps;
-        visualProgress+=(targetProgress-visualProgress)*0.05;
-        progressBar.style.transform=`scaleX(${visualProgress})`;
-        requestAnimationFrame(animateProgress);
-      }
-      requestAnimationFrame(animateProgress);
+  recorder.onstop=()=>{
+    const blob=new Blob(chunks,{type:chunks.length?chunks[0].type:'video/webm'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.style.display='none'; a.href=url;
+    const ext=blob.type.includes('mp4')?'mp4':'webm';
+    a.download=`wallet_visualization.${ext}`; document.body.appendChild(a); a.click();
+    setTimeout(()=>{document.body.removeChild(a); URL.revokeObjectURL(url);},100);
+    showInfo=previousShowInfo;
+    document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+    tokenListContainer.style.display=showInfo?'block':'none';
+    updateTokenListUI();
+    statusMsg.textContent='Recording finished!'; recordTimer.textContent='Recording: 0 / 20 s';
+    hideProgressSmooth(); recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
+    startRecording._recording=false;
+  };
 
-      try{
-        for(const step of steps){
-          statusMsg.textContent=step.name+'...';
-          await step.func();
-          currentStep++;
-        }
+  function cleanup(){
+    try{ if(recorder && recorder.state==='recording') recorder.stop(); }catch(e){}
+    showInfo=previousShowInfo;
+    document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+    tokenListContainer.style.display=showInfo?'block':'none';
+    updateTokenListUI();
+    recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
+    hideProgressSmooth(); recordTimer.textContent='Recording: 0 / 20 s';
+    startRecording._recording=false;
+  }
+}
 
-        if(showInfo){ tokenListContainer.style.display='block'; updateTokenListUI(); }
+recordBtn.addEventListener('click',()=>startRecording(true));
 
-        running=false; progressBar.style.transform='scaleX(1)'; statusMsg.textContent='Visualization running!';
-        hideProgressSmooth();
-        animate();
-      }catch(e){ running=false; hideProgressSmooth(); console.error(e); statusMsg.textContent='Error rendering visualization.'; alert('Render failed. Check console.'); }
-    }
-
-    // ===== Animation =====
-    function animate(frame=0){ drawFrame(frame,true); animRequest=requestAnimationFrame(()=>animate(frame+1)); }
-    function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
-
-    // ===== Event Listeners =====
-    connectBtn.addEventListener('click', connectWallet);
-    renderBtn.addEventListener('click', renderSnapshot);
-    fullscreenIcon.addEventListener('click', ()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
-    toggleInfoIcon.addEventListener('click', ()=>{
-      showInfo=!showInfo;
-      document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
-      tokenListContainer.style.display=showInfo?'block':'none';
-      if(showInfo) updateTokenListUI();
-    });
-
-    // ===== Video Recording =====
-    function pickSupportedMimeType(){
-      const candidates=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
-      for(const c of candidates){ try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; }catch(e){} }
-      return '';
-    }
-
-    async function startRecording(includeTokens=false){
-      if(startRecording._recording) return;
-      startRecording._recording=true;
-      const previousShowInfo=showInfo;
-      showInfo=false;
-      if(includeTokens){ tokenListContainer.style.display='block'; document.getElementById('infoText').textContent='Info'; }
-      stopAnimation(); particles=cloneParticles(); drawFrame(0,true);
-      statusMsg.textContent='Preparing recording...';
-      recordBtn.disabled=true; renderBtn.disabled=true; connectBtn.disabled=true;
-      showProgressSmooth(); if(!animRequest) animate();
-
-      let stream; try{ stream=canvas.captureStream(30); }catch(err){ statusMsg.textContent='Recording not supported.'; cleanup(); return; }
-
-      const mime=pickSupportedMimeType(); let recorder;
-      try{ recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(err){ alert('MediaRecorder not available.'); cleanup(); return; }
-
-      const chunks=[]; recorder.ondataavailable=(e)=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-      recorder.onerror=(ev)=>{ console.error(ev); statusMsg.textContent='Recording error.'; };
-      recorder.onstart=()=>{ statusMsg.textContent='Recording...'; };
-      recorder.start();
-
-      const startTime=performance.now(), duration=20000;
-      function updateProgress(timestamp){
-        const elapsed=timestamp-startTime;
-        const progress=Math.min(elapsed/duration,1);
-        progressBar.style.transform=`scaleX(${progress})`;
-        const seconds=Math.floor(elapsed/1000);
-        recordTimer.textContent=`Recording: ${seconds} / 20 s`;
-        if(elapsed<duration) requestAnimationFrame(updateProgress); else try{ recorder.stop(); }catch(e){}
-      }
-      requestAnimationFrame(updateProgress);
-
-      recorder.onstop=()=>{
-        const blob=new Blob(chunks,{type:chunks.length?chunks[0].type:'video/webm'});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.style.display='none'; a.href=url;
-        const ext=blob.type.includes('mp4')?'mp4':'webm';
-        a.download=`wallet_visualization.${ext}`; document.body.appendChild(a); a.click();
-        setTimeout(()=>{document.body.removeChild(a); URL.revokeObjectURL(url);},100);
-        showInfo=previousShowInfo;
-        document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
-        tokenListContainer.style.display=showInfo?'block':'none';
-        updateTokenListUI();
-        statusMsg.textContent='Recording finished!'; recordTimer.textContent='Recording: 0 / 20 s';
-        hideProgressSmooth(); recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
-        startRecording._recording=false;
-      };
-
-      function cleanup(){
-        try{ if(recorder && recorder.state==='recording') recorder.stop(); }catch(e){}
-        showInfo=previousShowInfo;
-        document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
-        tokenListContainer.style.display=showInfo?'block':'none';
-        updateTokenListUI();
-        recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
-        hideProgressSmooth(); recordTimer.textContent='Recording: 0 / 20 s';
-        startRecording._recording=false;
-      }
-    }
-
-    recordBtn.addEventListener('click',()=>startRecording(true));
   </script>
 </body>
 </html>
+
 
 
 
