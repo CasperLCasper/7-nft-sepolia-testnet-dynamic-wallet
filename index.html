@@ -145,55 +145,106 @@ async function initParticlesOnce(){
 }
 function cloneParticles(){ return initialParticles.map(p=>({...p})); }
 
-// ===== Draw Frame =====
+// ===== Particles =====
+async function initParticlesOnce(){
+  initialParticles=[];
+  const particleCount = Math.min(150,50+(tokens.length||0)*15);
+  const seedBase = (account||'')+String(ethBalance)+String(txCount);
+  for(let i=0;i<particleCount;i++){
+    const t = tokens.length ? tokens[i%tokens.length] : {balance:1,address:String(i),symbol:'T'};
+    const balanceFactor = t.isNFT ? 1 : Math.min(t.balance||0,20)/20;
+    let hue = hashStringToInt((t.address||'')+seedBase+i)%360;
+    const ethFactor = Math.min(ethBalance/10,1); 
+    hue=(hue+ethFactor*100)%360;
+
+    // 3D dzimums
+    const radius = 50 + seededRandomFloat(seedBase+i+'radius')*400;
+    const angle = seededRandomFloat(seedBase+i+'angle')*2*Math.PI;
+    const z = seededRandomFloat(seedBase+i+'z')*800 - 400; // z no -400 līdz 400
+    const r = t.isNFT?10:2+6*balanceFactor;
+    const speed = 0.005+0.01*(hashStringToInt((t.symbol||t.address)+seedBase+i,10)/10);
+
+    initialParticles.push({angle,radius,r,hue,speed,token:t,z});
+  }
+}
+function cloneParticles(){ return initialParticles.map(p=>({...p})); }
+
+// ===== Draw frame =====
 function drawFrame(frame,showTokensFrame){
-    const dpr = window.devicePixelRatio || 1;
-    const scale = isMobile ? 0.6 : 1;
-    const W = canvas.width/(dpr*scale);
-    const H = canvas.height/(dpr*scale);
-    ctx.clearRect(0,0,W,H);
-    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-    const cx0=W/2, cy0=H/2;
+  const dpr = window.devicePixelRatio || 1;
+  const scale = isMobile ? 0.6 : 1;
+  const W = canvas.width/(dpr*scale);
+  const H = canvas.height/(dpr*scale);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+  const cx0=W/2, cy0=H/2;
 
-    // Lines
-    for(let i=0;i<particles.length;i++){
-        for(let j=i+1;j<particles.length;j++){
-            const p1=particles[i], p2=particles[j];
-            const x1=cx0+Math.cos(p1.angle)*p1.radius;
-            const y1=cy0+Math.sin(p1.angle)*p1.radius;
-            const x2=cx0+Math.cos(p2.angle)*p2.radius;
-            const y2=cy0+Math.sin(p2.angle)*p2.radius;
-            const dx=x1-x2, dy=y1-y2;
-            const dist=Math.sqrt(dx*dx+dy*dy);
-            if(dist<200){
-                const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
-                const alpha=0.2+0.4*avgBalance*(1-dist/200);
-                ctx.lineWidth=1.5+2*avgBalance;
-                const txFactor=Math.log(txCount+1)/10;
-                const hue=(p1.hue+p2.hue)/2+frame*0.4*txFactor;
-                ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
-                ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-            }
-        }
+  // ===== Particles + lines =====
+  for(let i=0;i<particles.length;i++){
+    for(let j=i+1;j<particles.length;j++){
+      const p1=particles[i], p2=particles[j];
+
+      // 3D projection
+      const perspective = 800;
+      const scale1 = perspective / (perspective - p1.z);
+      const scale2 = perspective / (perspective - p2.z);
+      const x1=cx0 + Math.cos(p1.angle)*p1.radius*scale1;
+      const y1=cy0 + Math.sin(p1.angle)*p1.radius*scale1;
+      const x2=cx0 + Math.cos(p2.angle)*p2.radius*scale2;
+      const y2=cy0 + Math.sin(p2.angle)*p2.radius*scale2;
+
+      const dx=x1-x2, dy=y1-y2;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<200){
+        const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
+        const alpha=0.15+0.35*avgBalance*(1-dist/200)*(scale1+scale2)/2; // alpha scaling ar dziļumu
+        ctx.lineWidth=(1.5+2*avgBalance)*(scale1+scale2)/2;
+        const hue=(p1.hue+p2.hue)/2 + frame*0.4*Math.log(txCount+1)/10;
+        ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      }
     }
+  }
 
-    // Particles
-    particles.forEach(p=>{
-        p.angle+=p.speed;
-        const cx=cx0+Math.cos(p.angle)*p.radius;
-        const cy=cy0+Math.sin(p.angle)*p.radius;
-        const gradient=ctx.createRadialGradient(cx,cy,0,cx,cy,p.r*2.5);
-        gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
-        gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
-        gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
-        ctx.fillStyle=gradient; ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
-    });
+  // ===== Draw particles =====
+  particles.forEach(p=>{
+    p.angle+=p.speed;
+    p.z -= 0.5; // particles slowly move forward
+    if(p.z < -400) p.z = 400; // loop back
 
-    if(showTokensFrame && showInfo){
-        ctx.fillStyle='#0ff';
-        ctx.font='22px Inter';
-        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`,10,80);
+    const perspective = 800;
+    const scale3D = perspective / (perspective - p.z);
+    const cx = cx0 + Math.cos(p.angle)*p.radius*scale3D;
+    const cy = cy0 + Math.sin(p.angle)*p.radius*scale3D;
+    const rScaled = p.r*scale3D;
+
+    // Gradient + glow
+    const gradient = ctx.createRadialGradient(cx,cy,0,cx,cy,rScaled*2.5);
+    const hueOffset = p.z*0.05; // z-depth hue shift
+    gradient.addColorStop(0, `hsla(${p.hue+hueOffset},100%,70%,1)`);
+    gradient.addColorStop(0.5, `hsla(${p.hue+20+hueOffset},100%,60%,0.9)`);
+    gradient.addColorStop(1, `hsla(${p.hue+40+hueOffset},100%,40%,0.4)`); // depth alpha scaling
+    ctx.fillStyle = gradient;
+    ctx.beginPath(); ctx.arc(cx,cy,rScaled,0,Math.PI*2);
+    ctx.fill();
+
+    // Energy wave for big balances
+    if(p.token.balance>10 || p.token.isNFT){
+      const pulse = Math.sin(frame*0.05 + p.angle*3) * 0.3 + 0.7;
+      ctx.strokeStyle = `hsla(${p.hue+hueOffset},100%,90%,${0.5*p.token.balance/20*pulse})`;
+      ctx.lineWidth = 2*p.r*pulse*scale3D;
+      ctx.beginPath();
+      ctx.arc(cx,cy,rScaled*1.5*pulse,0,Math.PI*2);
+      ctx.stroke();
     }
+  });
+
+  // ===== Info text =====
+  if(showTokensFrame && showInfo){
+    ctx.fillStyle='#0ff';
+    ctx.font='22px Inter';
+    ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`,10,80);
+  }
 }
 
 // ===== Connect Wallet =====
