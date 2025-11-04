@@ -249,63 +249,218 @@
         const res=await fetch(`/api/getNFTs?account=${encodeURIComponent(account)}`);
         const data=await res.json();
         return data?.ownsNFT===true;
-      }catch(e){ console.error(e); return false; }finally{ hideProgressSmooth(); }
+      }catch(err){ console.error(err); return false; }
+      finally{ hideProgressSmooth(); }
     }
 
-    async function fetchWalletData(){
-      if(!account) return;
+    async function getTokens(){
+      if(!account) return [];
+      showProgressSmooth();
       try{
-        ethBalance=parseFloat((await provider.getBalance(account)).toString())/1e18;
-        txCount=await provider.getTransactionCount(account);
-        tokens=[{address:'ETH',balance:ethBalance,symbol:'ETH'}]; 
-        updateTokenListUI();
-        await initParticlesOnce(); 
-        particles=cloneParticles();
-      }catch(e){ console.error(e); }
+        const res=await fetch(`/api/getTokens?account=${encodeURIComponent(account)}`);
+        if(!res.ok){ statusMsg.textContent='Token API unavailable — fallback'; return []; }
+        const data=await res.json();
+        if(!data?.result?.tokenBalances) return [];
+        return data.result.tokenBalances.map(t=>{
+          const decimals=t.tokenDecimals!=null?Number(t.tokenDecimals):18;
+          const balance=Number(ethers.formatUnits(t.tokenBalance||"0x0",decimals));
+          const address=(t.tokenAddress||t.contractAddress||"").toLowerCase();
+          return {address,balance,symbol:t.symbol||address};
+        }).filter(t=>t.balance>0);
+      }catch(e){ console.error(e); statusMsg.textContent='Failed fetching tokens'; return []; }
+      finally{ hideProgressSmooth(); }
     }
 
-    // ===== Connect wallet =====
-    connectBtn.onclick=async ()=>{
+    async function getAllNFTs(){
+      if(!account) return [];
+      showProgressSmooth();
+      try{
+        const res=await fetch(`/api/getAllNFTs?account=${encodeURIComponent(account)}`);
+        if(!res.ok) return [];
+        const data=await res.json();
+        if(!data?.nfts) return [];
+        return data.nfts.map(nft=>({
+          address:nft.contract.address,
+          symbol:nft.contract.symbol||'NFT',
+          balance:1,
+          isNFT:true,
+          tokenId:nft.id.tokenId
+        }));
+      }catch(e){ console.error(e); return []; }
+      finally{ hideProgressSmooth(); }
+    }
+
+    // ===== Connect Wallet =====
+    async function connectWallet(){
+      showProgressSmooth();
       try{
         if(window.ethereum){
-          provider = new ethers.BrowserProvider(window.ethereum);
-          await provider.send("eth_requestAccounts", []);
-          signer = await provider.getSigner();
-          account = await signer.getAddress();
-        }else{
-          wcProvider = new WalletConnectProvider.default({rpc:{11155111:providerRpcUrl}});
+          provider=new ethers.BrowserProvider(window.ethereum,"sepolia");
+          await provider.send("eth_requestAccounts",[]);
+          signer=await provider.getSigner();
+          account=await signer.getAddress();
+        } else {
+          wcProvider=new WalletConnectProvider.default({ rpc:{11155111:providerRpcUrl} });
           await wcProvider.enable();
-          provider = new ethers.BrowserProvider(wcProvider);
-          signer = await provider.getSigner();
-          account = await signer.getAddress();
+          provider=new ethers.BrowserProvider(wcProvider,"sepolia");
+          signer=await provider.getSigner();
+          account=await signer.getAddress();
         }
-        accountDisplay.textContent=`Connected account: ${account}`;
-        renderBtn.disabled=false; recordBtn.disabled=false;
-        await fetchWalletData();
-      }catch(e){ console.error(e); alert('Connect wallet failed'); }
-    };
 
-    // ===== Render snapshot =====
-    renderBtn.onclick=()=>{ drawFrame(Date.now(),true); };
+        accountDisplay.textContent='Connected account: '+account;
+        walletSeed=hashStringToInt(account);
 
-    // ===== Animation loop =====
-    function animate(){
-      drawFrame(Date.now(),true);
-      animRequest=requestAnimationFrame(animate);
+        const hasNFT = await checkNFTAccess();
+        if(hasNFT){
+          renderBtn.disabled=false;
+          recordBtn.disabled=false;
+          statusMsg.textContent='Wallet connected & NFT verified — access granted.';
+        } else {
+          renderBtn.disabled=true;
+          recordBtn.disabled=true;
+          statusMsg.textContent='NFT not found — access denied.';
+          alert('Access denied — required NFT not found.');
+        }
+
+      }catch(err){
+        console.error(err);
+        statusMsg.textContent='Wallet connection failed.';
+        alert('Wallet connection failed. Retry.');
+      }finally{ hideProgressSmooth(); }
     }
-    animate();
 
-    // ===== Fullscreen & info toggle =====
-    fullscreenIcon.onclick=()=>{ if(document.fullscreenElement){ document.exitFullscreen(); }else{ document.documentElement.requestFullscreen(); } };
-    toggleInfoIcon.onclick=()=>{ showInfo=!showInfo; };
+    // ===== Render Snapshot =====
+    async function renderSnapshot(){
+      if(!account) await connectWallet();
+      if(!provider || !account){ statusMsg.textContent='Wallet not connected.'; return; }
 
-    // ===== Video recording UI =====
-    recordBtn.onclick=()=>{ overlay.style.display='block'; recordDropdown.style.display='block'; recordDropdown.setAttribute('aria-hidden','false'); };
-    dropdownClose.onclick=()=>{ overlay.style.display='none'; recordDropdown.style.display='none'; recordDropdown.setAttribute('aria-hidden','true'); };
-    overlay.onclick=dropdownClose;
+      stopAnimation();
+      showProgressSmooth();
+      progressBar.style.transform='scaleX(0)';
+      statusMsg.textContent='';
+
+      const steps=[
+        {name:'Fetching ETH balance', func: async()=>{ ethBalance=Number(ethers.formatEther(await provider.getBalance(account)))||0; }},
+        {name:'Fetching transaction count', func: async()=>{ txCount=Number(await provider.getTransactionCount(account))||0; }},
+        {name:'Fetching tokens', func: async()=>{ tokens=[...await getTokens()]; }},
+        {name:'Fetching NFTs', func: async()=>{ tokens=[...tokens,...await getAllNFTs()]; }},
+        {name:'Initializing particles', func: async()=>{ await initParticlesOnce(); particles=cloneParticles(); }}
+      ];
+
+      let currentStep=0, totalSteps=steps.length;
+      let visualProgress=0, running=true;
+
+      function animateProgress(){
+        if(!running) return;
+        const targetProgress=currentStep/totalSteps;
+        visualProgress+=(targetProgress-visualProgress)*0.05;
+        progressBar.style.transform=`scaleX(${visualProgress})`;
+        requestAnimationFrame(animateProgress);
+      }
+      requestAnimationFrame(animateProgress);
+
+      try{
+        for(const step of steps){
+          statusMsg.textContent=step.name+'...';
+          await step.func();
+          currentStep++;
+        }
+
+        if(showInfo){ tokenListContainer.style.display='block'; updateTokenListUI(); }
+
+        running=false; progressBar.style.transform='scaleX(1)'; statusMsg.textContent='Visualization running!';
+        hideProgressSmooth();
+        animate();
+      }catch(e){ running=false; hideProgressSmooth(); console.error(e); statusMsg.textContent='Error rendering visualization.'; alert('Render failed. Check console.'); }
+    }
+
+    // ===== Animation =====
+    function animate(frame=0){ drawFrame(frame,true); animRequest=requestAnimationFrame(()=>animate(frame+1)); }
+    function stopAnimation(){ if(animRequest) cancelAnimationFrame(animRequest); animRequest=null; }
+
+    // ===== Event Listeners =====
+    connectBtn.addEventListener('click', connectWallet);
+    renderBtn.addEventListener('click', renderSnapshot);
+    fullscreenIcon.addEventListener('click', ()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(()=>{}); else document.exitFullscreen().catch(()=>{}); });
+    toggleInfoIcon.addEventListener('click', ()=>{
+      showInfo=!showInfo;
+      document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+      tokenListContainer.style.display=showInfo?'block':'none';
+      if(showInfo) updateTokenListUI();
+    });
+
+    // ===== Video Recording =====
+    function pickSupportedMimeType(){
+      const candidates=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+      for(const c of candidates){ try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; }catch(e){} }
+      return '';
+    }
+
+    async function startRecording(includeTokens=false){
+      if(startRecording._recording) return;
+      startRecording._recording=true;
+      const previousShowInfo=showInfo;
+      showInfo=false;
+      if(includeTokens){ tokenListContainer.style.display='block'; document.getElementById('infoText').textContent='Info'; }
+      stopAnimation(); particles=cloneParticles(); drawFrame(0,true);
+      statusMsg.textContent='Preparing recording...';
+      recordBtn.disabled=true; renderBtn.disabled=true; connectBtn.disabled=true;
+      showProgressSmooth(); if(!animRequest) animate();
+
+      let stream; try{ stream=canvas.captureStream(30); }catch(err){ statusMsg.textContent='Recording not supported.'; cleanup(); return; }
+
+      const mime=pickSupportedMimeType(); let recorder;
+      try{ recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(err){ alert('MediaRecorder not available.'); cleanup(); return; }
+
+      const chunks=[]; recorder.ondataavailable=(e)=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+      recorder.onerror=(ev)=>{ console.error(ev); statusMsg.textContent='Recording error.'; };
+      recorder.onstart=()=>{ statusMsg.textContent='Recording...'; };
+      recorder.start();
+
+      const startTime=performance.now(), duration=20000;
+      function updateProgress(timestamp){
+        const elapsed=timestamp-startTime;
+        const progress=Math.min(elapsed/duration,1);
+        progressBar.style.transform=`scaleX(${progress})`;
+        const seconds=Math.floor(elapsed/1000);
+        recordTimer.textContent=`Recording: ${seconds} / 20 s`;
+        if(elapsed<duration) requestAnimationFrame(updateProgress); else try{ recorder.stop(); }catch(e){}
+      }
+      requestAnimationFrame(updateProgress);
+
+      recorder.onstop=()=>{
+        const blob=new Blob(chunks,{type:chunks.length?chunks[0].type:'video/webm'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.style.display='none'; a.href=url;
+        const ext=blob.type.includes('mp4')?'mp4':'webm';
+        a.download=`wallet_visualization.${ext}`; document.body.appendChild(a); a.click();
+        setTimeout(()=>{document.body.removeChild(a); URL.revokeObjectURL(url);},100);
+        showInfo=previousShowInfo;
+        document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+        tokenListContainer.style.display=showInfo?'block':'none';
+        updateTokenListUI();
+        statusMsg.textContent='Recording finished!'; recordTimer.textContent='Recording: 0 / 20 s';
+        hideProgressSmooth(); recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
+        startRecording._recording=false;
+      };
+
+      function cleanup(){
+        try{ if(recorder && recorder.state==='recording') recorder.stop(); }catch(e){}
+        showInfo=previousShowInfo;
+        document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
+        tokenListContainer.style.display=showInfo?'block':'none';
+        updateTokenListUI();
+        recordBtn.disabled=false; renderBtn.disabled=false; connectBtn.disabled=false;
+        hideProgressSmooth(); recordTimer.textContent='Recording: 0 / 20 s';
+        startRecording._recording=false;
+      }
+    }
+
+    recordBtn.addEventListener('click',()=>startRecording(true));
   </script>
 </body>
 </html>
+
 
 
 
