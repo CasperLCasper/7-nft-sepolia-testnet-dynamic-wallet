@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dynamic Wallet Visualizer — Sepolia NFT Access</title>
 
-  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <style>
@@ -93,60 +92,53 @@
     </section>
   </div>
 
-  <div id="overlay" tabindex="-1"></div>
-
   <!-- External libs -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
   <script>
-    // ===== Canvas setup =====
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     const canvas = document.getElementById('snapshotCanvas');
     const ctx = canvas.getContext('2d');
-    function resizeCanvas() {
-      const dpr = window.devicePixelRatio || 1;
-      const scale = isMobile ? 0.6 : 1;
-      canvas.width = Math.round(1920*dpr*scale);
-      canvas.height = Math.round(1080*dpr*scale);
-      canvas.style.width = '100%';
-      canvas.style.height = 'auto';
-      ctx.setTransform(1,0,0,1,0,0);
-      ctx.scale(dpr*scale, dpr*scale);
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    // ===== Variables =====
-    const NFT_CONTRACT = "0x1EF02c3Ed33a98c10F0bf1fd71e4D226e8e408A5";
-    const providerRpcUrl = "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY"; 
-    let provider, signer, account, wcProvider;
-    let showInfo = true;
-    let tokens=[], ethBalance=0, txCount=0, particles=[], initialParticles=[], animRequest=null;
-    let walletSeed=0;
-
     const connectBtn = document.getElementById('connectBtn');
     const renderBtn = document.getElementById('renderBtn');
     const recordBtn = document.getElementById('recordBtn');
     const accountDisplay = document.getElementById('accountDisplay');
     const recordTimer = document.getElementById('recordTimer');
     const statusMsg = document.getElementById('statusMsg');
-    const overlay = document.getElementById('overlay');
-    const fullscreenIcon = document.getElementById('fullscreenIcon');
-    const toggleInfoIcon = document.getElementById('toggleInfoIcon');
     const progressBarContainer = document.getElementById('progressBarContainer');
     const progressBar = document.getElementById('progressBar');
+    const fullscreenIcon = document.getElementById('fullscreenIcon');
+    const toggleInfoIcon = document.getElementById('toggleInfoIcon');
     const tokenListContainer = document.getElementById('tokenListContainer');
     const tokenListContent = document.getElementById('tokenListContent');
 
-    // ===== Helpers =====
-    function showProgressSmooth(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; }
-    function hideProgressSmooth(){ progressBar.style.transform='scaleX(1)'; setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
+    let provider, signer, account, wcProvider;
+    let showInfo = true;
+    let tokens=[], ethBalance=0, txCount=0, particles=[], initialParticles=[], animRequest=null;
+    let walletSeed=0;
+    const providerRpcUrl = "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY";
+
+    function resizeCanvas(){
+      const dpr = window.devicePixelRatio||1;
+      const scale = isMobile?0.6:1;
+      canvas.width = Math.round(1920*dpr*scale);
+      canvas.height = Math.round(1080*dpr*scale);
+      canvas.style.width='100%';
+      canvas.style.height='auto';
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(dpr*scale,dpr*scale);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function showProgress(){ progressBarContainer.style.display='block'; progressBar.style.transform='scaleX(0)'; }
+    function hideProgress(){ progressBar.style.transform='scaleX(1)'; setTimeout(()=>{progressBarContainer.style.display='none'; progressBar.style.transform='scaleX(0)';},500); }
     function hashStringToInt(str,mod=1000){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;} return h%mod; }
     function seededRandomFloat(seedStr){ return hashStringToInt(seedStr,10000)/10000; }
 
-    // ===== Particles =====
-    async function initParticlesOnce(){
+    // Particles
+    async function initParticles(){
       initialParticles=[];
       const particleCount = Math.min(150,50+(tokens.length||0)*15);
       const seedBase = (account||'')+String(ethBalance)+String(txCount);
@@ -164,36 +156,12 @@
     }
     function cloneParticles(){ return initialParticles.map(p=>({...p})); }
 
-    // ===== Draw frame =====
-    function drawFrame(frame,showTokensFrame){
-      const dpr = window.devicePixelRatio || 1;
-      const scale = isMobile ? 0.6 : 1;
-      const W = canvas.width/(dpr*scale);
-      const H = canvas.height/(dpr*scale);
+    function drawFrame(){
+      const W = canvas.width;
+      const H = canvas.height;
       ctx.clearRect(0,0,W,H);
       ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
       const cx0=W/2, cy0=H/2;
-
-      for(let i=0;i<particles.length;i++){
-        for(let j=i+1;j<particles.length;j++){
-          const p1=particles[i], p2=particles[j];
-          const x1=cx0+Math.cos(p1.angle)*p1.radius;
-          const y1=cy0+Math.sin(p1.angle)*p1.radius;
-          const x2=cx0+Math.cos(p2.angle)*p2.radius;
-          const y2=cy0+Math.sin(p2.angle)*p2.radius;
-          const dx=x1-x2, dy=y1-y2;
-          const dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<200){
-            const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
-            const alpha=0.2+0.4*avgBalance*(1-dist/200);
-            ctx.lineWidth=1.5+2*avgBalance;
-            const txFactor=Math.log(txCount+1)/10;
-            const hue=(p1.hue+p2.hue)/2+frame*0.4*txFactor;
-            ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
-            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-          }
-        }
-      }
 
       particles.forEach(p=>{
         p.angle+=p.speed;
@@ -206,42 +174,23 @@
         ctx.fillStyle=gradient; ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
       });
 
-      if(showTokensFrame && showInfo){
+      if(showInfo){
         ctx.fillStyle='#0ff';
         ctx.font='22px Inter';
         ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`,10,80);
       }
     }
 
-    // ===== Token UI =====
-    function updateTokenListUI() {
-      if(!tokens || tokens.length===0){ tokenListContent.innerHTML='<tr><td colspan="2" style="color:#777;">No tokens</td></tr>'; return; }
-      tokenListContent.innerHTML='';
-      tokens.forEach(t=>{
-        const tr=document.createElement('tr');
-        const addrTd=document.createElement('td'); addrTd.textContent=t.address; addrTd.title=t.address;
-        const balTd=document.createElement('td'); balTd.textContent=t.balance.toFixed(4);
-        tr.appendChild(addrTd); tr.appendChild(balTd);
-        tokenListContent.appendChild(tr);
-      });
-    }
-
-    // ===== Fullscreen & Info toggle =====
-    fullscreenIcon.onclick = () => {
-      if(!document.fullscreenElement) canvas.requestFullscreen();
-      else document.exitFullscreen();
-    }
-    toggleInfoIcon.onclick = () => { showInfo = !showInfo; tokenListContainer.style.display = showInfo ? 'block':'none'; }
-
-    // ===== Animation loop =====
-    function animate() {
-      drawFrame(performance.now()/16,true);
-      animRequest=requestAnimationFrame(animate);
-    }
+    function animate(){ drawFrame(); animRequest=requestAnimationFrame(animate); }
     animate();
+
+    fullscreenIcon.onclick = () => { if(!document.fullscreenElement) canvas.requestFullscreen(); else document.exitFullscreen(); }
+    toggleInfoIcon.onclick = () => { showInfo=!showInfo; tokenListContainer.style.display=showInfo?'block':'none'; }
+
   </script>
 </body>
 </html>
+
 
 
 
