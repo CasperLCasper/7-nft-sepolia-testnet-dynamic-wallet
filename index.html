@@ -3,48 +3,47 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dynamic Wallet Visualizer — Sepolia NFT Access</title>
+  <title>Dynamic Wallet Visualizer — Sepolia NFT Access (Enhanced Visuals)</title>
 
   <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <style>
-    body { font-family:'Inter',Arial,sans-serif; background:#000; color:#fff; margin:0; padding:20px; position: relative; }
+    :root{ --accent: #0ff; --bg:#000; --muted:#9fb0c3; }
+    html,body{height:100%; margin:0;}
+    body { font-family:'Inter',Arial,sans-serif; background:var(--bg); color:#fff; margin:0; padding:20px; position: relative; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
     .container { max-width:1400px; margin:auto; display:flex; flex-direction:column; align-items:center; gap:12px; }
     h1 { font-size:36px; margin:0; line-height:1; background:linear-gradient(90deg,#ffffff,#aaaaaa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; }
-    .subtitle { margin-top:4px; color:#9fb0c3; font-size:18px; text-align:center; }
+    .subtitle { margin-top:4px; color:var(--muted); font-size:18px; text-align:center; }
     .controls { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-    button { padding:12px 20px; border-radius:12px; border:none; cursor:pointer; background:linear-gradient(90deg,#4a90e2,#9013fe); color:#fff; font-weight:700; font-size:16px; box-shadow:0 6px 18px rgba(0,0,0,0.45); transition: transform 0.2s, box-shadow 0.2s; }
+    button { padding:12px 20px; border-radius:12px; border:none; cursor:pointer; background:linear-gradient(90deg,#4a90e2,#9013fe); color:#fff; font-weight:700; font-size:16px; box-shadow:0 6px 18px rgba(0,0,0,0.45); transition: transform 0.12s, box-shadow 0.12s; }
     button:disabled { background:#444; cursor:not-allowed; box-shadow:0 6px 18px rgba(0,0,0,0.2); }
-    button:hover:not(:disabled) { transform:translateY(-4px) scale(1.03); box-shadow:0 8px 22px rgba(0,0,0,0.65); }
-    .snapshot-container { width:100%; background:#000; border-radius:14px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,0.6); position:relative; }
+    button:hover:not(:disabled) { transform:translateY(-3px) scale(1.02); box-shadow:0 8px 22px rgba(0,0,0,0.65); }
+    .snapshot-container { width:100%; background:transparent; border-radius:14px; padding:18px; position:relative; }
     #snapshotCanvas { width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.03); display:block; margin-bottom:12px; background:transparent; }
-    #recordTimer { margin-top:6px; color:#0ff; font-weight:600; font-size:16px; text-align:center; }
+    #recordTimer { margin-top:6px; color:var(--accent); font-weight:600; font-size:16px; text-align:center; }
     #statusContainer { position: relative; width: 100%; height: 40px; margin-top: 8px; }
     .status { font-weight:600; font-size:16px; color:#fff; line-height:40px; text-align:center; }
-    #progressBarContainer { position: absolute; top: 50%; left: 50%; width: 60%; height: 18px; background: rgba(255,255,255,0.1); border-radius: 6px; transform: translate(-50%, -50%); display: none; overflow: hidden; }
-    #progressBar { height: 100%; width: 100%; background: linear-gradient(90deg,#0ff,#4a90e2); border-radius: 6px; transform: scaleX(0); transform-origin: left center; transition: transform 0.25s ease; }
+    #progressBarContainer { position: absolute; top: 50%; left: 50%; width: 60%; height: 18px; background: rgba(255,255,255,0.06); border-radius: 6px; transform: translate(-50%, -50%); display: none; overflow: hidden; }
+    #progressBar { height: 100%; width: 100%; background: linear-gradient(90deg,var(--accent),#4a90e2); border-radius: 6px; transform: scaleX(0); transform-origin: left center; transition: transform 0.25s ease; }
     #overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:999; }
     #recordDropdown { display:none; position: fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#111; border:2px solid #555; border-radius:12px; padding:80px 20px 20px 20px; z-index:1000; min-width:360px; box-shadow:0 8px 24px rgba(0,0,0,0.7); text-align:center; overflow-y:auto; }
     #recordDropdown button { width:100%; margin:16px 0; }
     #dropdownClose { position:absolute; top:10px; right:10px; cursor:pointer; font-size:28px; font-weight:bold; color:#fff; background:none; border:none; padding:0; line-height:1; }
-    #fullscreenIcon { position:absolute; top:10px; right:10px; display:flex; align-items:center; cursor:pointer; color:#0ff; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; transition: background 0.2s, transform 0.2s; z-index:10; user-select:none; }
-    #fullscreenIcon:hover { background:rgba(0,255,255,0.2); transform: scale(1.05); }
-    #fullscreenText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
-    #toggleInfoIcon { position:absolute; top:10px; left:10px; display:flex; align-items:center; cursor:pointer; color:#0ff; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 10px; transition: background 0.2s, transform 0.2s; z-index:10; user-select:none; }
-    #toggleInfoIcon:hover { background:rgba(0,255,255,0.2); transform: scale(1.05); }
-    #infoText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
-    #accountDisplay { width:100%; word-break:break-word; margin-top:8px; font-size:16px; text-align:center; }
+    #fullscreenIcon { position:absolute; top:10px; right:10px; display:flex; align-items:center; cursor:pointer; color:var(--accent); background:rgba(0,0,0,0.25); border-radius:6px; padding:6px 10px; transition: background 0.12s, transform 0.12s; z-index:10; user-select:none; }
+    #toggleInfoIcon { position:absolute; top:10px; left:10px; display:flex; align-items:center; cursor:pointer; color:var(--accent); background:rgba(0,0,0,0.25); border-radius:6px; padding:6px 10px; transition: background 0.12s, transform 0.12s; z-index:10; user-select:none; }
+    #infoText, #fullscreenText { font-family:'Inter',Arial,sans-serif; white-space: nowrap; margin-left:6px; font-size:16px; font-weight:600; }
+    #accountDisplay { width:100%; word-break:break-word; margin-top:8px; font-size:16px; text-align:center; color:var(--muted); }
 
     #tokenListContainer {
       display:none;
       position:absolute;
       top:80px;
       left:10px;
-      max-height:150px;
+      max-height:180px;
       width:90%;
       max-width:576px;
-      background:rgba(0,0,0,0.5);
+      background:linear-gradient(180deg, rgba(8,8,10,0.6), rgba(10,10,12,0.45));
       border-radius:9px;
       overflow-y:auto;
       padding:10px;
@@ -52,18 +51,20 @@
       font-family:'Inter',Arial,sans-serif;
       font-size:14px;
       z-index:15;
+      backdrop-filter: blur(6px);
+      border:1px solid rgba(255,255,255,0.03);
     }
     #tokenListContainer table { width:100%; border-collapse:collapse; }
     #tokenListContainer th, #tokenListContainer td { padding:6px 8px; text-align:left; font-size:13px; }
-    #tokenListContainer th { color:#0ff; font-weight:600; }
-    #tokenListContainer tr:nth-child(even) td { background:rgba(255,255,255,0.05); }
-    #tokenListContainer tr:nth-child(odd) td { background:rgba(255,255,255,0.02); }
+    #tokenListContainer th { color:var(--accent); font-weight:600; }
+    #tokenListContainer tr:nth-child(even) td { background:rgba(255,255,255,0.02); }
+    #tokenListContainer tr:nth-child(odd) td { background:rgba(255,255,255,0.01); }
     #tokenListContainer::-webkit-scrollbar { width:6px; }
-    #tokenListContainer::-webkit-scrollbar-thumb { background:#0ff; border-radius:3px; }
-    #tokenListContainer::-webkit-scrollbar-track { background:#222; border-radius:3px; }
+    #tokenListContainer::-webkit-scrollbar-thumb { background:var(--accent); border-radius:3px; }
+    #tokenListContainer::-webkit-scrollbar-track { background:#111; border-radius:3px; }
 
     /* small FPS badge */
-    #fpsBadge { position:absolute; bottom:18px; right:18px; background:rgba(255,255,255,0.06); color:#0ff; padding:8px 12px; border-radius:10px; font-weight:700; z-index:20; font-family:'Inter',Arial,sans-serif; }
+    #fpsBadge { position:absolute; bottom:18px; right:18px; background:rgba(255,255,255,0.04); color:var(--accent); padding:8px 12px; border-radius:10px; font-weight:700; z-index:20; font-family:'Inter',Arial,sans-serif; }
   </style>
 </head>
 
@@ -129,8 +130,7 @@
       canvas.style.height = 'auto';
       ctx.setTransform(1,0,0,1,0,0);
       ctx.scale(dpr * scale, dpr * scale);
-      // minor performance hints
-      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingEnabled = true;
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
@@ -143,12 +143,11 @@
     let tokens = [], ethBalance = 0, txCount = 0, particles = [], initialParticles = [], animRequest = null;
     let walletSeed = 0;
 
-    // performance/adaptive params
+    // visual/perf params
     let maxConnectionsBase = 4;
     let gridSizeBase = 140;
-    let desiredFPS = 50;
+    let desiredFPS = 55;
     let fpsMeasurements = [];
-    let lastFPSCheck = performance.now();
 
     const connectBtn = document.getElementById('connectBtn');
     const renderBtn = document.getElementById('renderBtn');
@@ -175,14 +174,12 @@
     function hashStringToInt(str,mod=1000){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;} return h%mod; }
     function seededRandomFloat(seedStr){ return hashStringToInt(seedStr,10000)/10000; }
 
-    // ===== Particle functions (optimized with spatial grid) =====
+    // ===== Particle functions (optimized with spatial grid + intense trails & blooms) =====
 
-    // Modified initParticlesOnce: assign unique id and initial x/y
     async function initParticlesOnce(){
       initialParticles = [];
-      // adaptive base count
-      const base = isMobile ? 40 : 70;
-      const particleCount = Math.min(220, base + Math.round((tokens.length || 0) * 10));
+      const base = isMobile ? 40 : 80;
+      const particleCount = Math.min(260, base + Math.round((tokens.length || 0) * 12));
       const seedBase = (account || '') + String(ethBalance) + String(txCount);
 
       for(let i=0;i<particleCount;i++){
@@ -191,15 +188,12 @@
         let hue = hashStringToInt((t.address || '') + seedBase + i) % 360;
         const ethFactor = Math.min(ethBalance / 10, 1);
         hue = (hue + ethFactor * 100) % 360;
-        const speed = 0.004 + 0.012 * (hashStringToInt((t.symbol || t.address) + seedBase + i, 10) / 10);
+        const speed = 0.004 + 0.014 * (hashStringToInt((t.symbol || t.address) + seedBase + i, 10) / 10);
         const r = t.isNFT ? 10 : 2 + 6 * balanceFactor;
         const angle = seededRandomFloat(seedBase + i + 'angle') * 2 * Math.PI;
-        const radius = 50 + seededRandomFloat(seedBase + i + 'radius') * 420;
+        const radius = 50 + seededRandomFloat(seedBase + i + 'radius') * 480;
 
-        // unique id for dedup keys
         const id = `${Date.now().toString(36)}_${i}`;
-
-        // initial x/y (centered later per frame)
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
 
@@ -207,44 +201,44 @@
       }
     }
 
-    // cloneParticles remains simple copy but keeps ids
     function cloneParticles(){
       return initialParticles.map(p => ({ ...p }));
     }
 
-    // Spatial-partitioning drawFrame
+    // Intense trail: use alpha-overlay that is nearly transparent (so trails persist longer)
+    // plus occasional "energy bloom" and pulsing line alpha.
     function drawFrame(frame, showTokensFrame){
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
       const W = canvas.width / (dpr * scale);
       const H = canvas.height / (dpr * scale);
 
-      // clear
-      ctx.clearRect(0, 0, W, H);
-      // background
-      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      // partially fade previous frame -> creates persistent trails (intense)
+      // smaller alpha -> more persistent trails; we've chosen 0.04 for intense/trails
+      ctx.fillStyle = "rgba(0,0,0,0.04)";
+      ctx.fillRect(0, 0, W, H);
+
       const cx0 = W / 2, cy0 = H / 2;
 
-      // dynamic/adaptive params
-      // lower grid size => finer partitioning (more cells), higher => fewer neighbors to check
+      // adaptive params
       const gridSize = gridSizeBase;
-      // adapt max connections based on recent FPS
       const measuredFPS = getMeasuredFPS();
       let maxConnections = maxConnectionsBase;
-      if (measuredFPS < 35) maxConnections = Math.max(1, Math.round(maxConnectionsBase * 0.5));
-      else if (measuredFPS < 45) maxConnections = Math.max(1, Math.round(maxConnectionsBase * 0.75));
-      // distance threshold for drawing connections
-      const maxDistance = 200;
+      if (measuredFPS < 30) maxConnections = Math.max(1, Math.round(maxConnectionsBase * 0.5));
+      else if (measuredFPS < 45) maxConnections = Math.max(1, Math.round(maxConnectionsBase * 0.8));
+      const maxDistance = 240; // slightly increased for richer visuals
       const maxDistanceSq = maxDistance * maxDistance;
 
-      // Update angles & compute positions
+      // update positions
       for (let p of particles) {
-        p.angle += p.speed;
+        // slight per-particle jitter for more organic motion
+        const jitter = (seededRandomFloat(p.id + frame) - 0.5) * 0.002;
+        p.angle += p.speed + jitter;
         p.x = cx0 + Math.cos(p.angle) * p.radius;
         p.y = cy0 + Math.sin(p.angle) * p.radius;
       }
 
-      // Build spatial grid (Map: "gx,gy" -> array of particles)
+      // build grid
       const grid = new Map();
       function gridKey(gx, gy){ return gx + ',' + gy; }
 
@@ -256,34 +250,38 @@
         grid.get(key).push(p);
       }
 
-      // Helper to draw a connection between two particles
+      // helper draw connection with pulsing & color variance
       function drawConnection(p1, p2, frame) {
         const dx = p1.x - p2.x, dy = p1.y - p2.y;
         const distSq = dx * dx + dy * dy;
         if (distSq > maxDistanceSq) return false;
         const dist = Math.sqrt(distSq);
         const avgBalance = (Math.min(p1.token.balance || 0, 20) + Math.min(p2.token.balance || 0, 20)) / 40;
-        const alpha = 0.18 + 0.42 * avgBalance * (1 - dist / maxDistance);
-        ctx.lineWidth = 1.2 + 2 * avgBalance;
+        // pulsing alpha for dynamic "breathing" energy
+        const pulse = 0.55 + 0.45 * Math.sin((frame * 0.02) + (p1.hue + p2.hue) * 0.01);
+        const alpha = Math.max(0.08, (0.18 + 0.42 * avgBalance * (1 - dist / maxDistance)) * pulse);
+        ctx.lineWidth = 1.0 + 2.2 * avgBalance;
         const txFactor = Math.log(txCount + 1) / 10;
-        const hue = (p1.hue + p2.hue) / 2 + frame * 0.36 * txFactor;
-        ctx.strokeStyle = `hsla(${hue},100%,70%,${alpha})`;
+        const hue = (p1.hue + p2.hue) / 2 + frame * 0.28 * txFactor;
+        const sat = 70 + 18 * Math.sin(frame * 0.01 + p1.hue * 0.02);
+        ctx.strokeStyle = `hsla(${hue},${sat}%,70%,${alpha})`;
+
+        // energetic glow: use shadow for occasional stronger lines
+        const glow = (avgBalance > 0.6 && Math.random() < 0.12);
+        if (glow) { ctx.shadowBlur = 18; ctx.shadowColor = `hsla(${hue},${sat}%,65%,${alpha})`; }
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+        if (glow) ctx.shadowBlur = 0;
         return true;
       }
 
-      // Keep a Set of drawn pairs (to avoid duplicates). We'll store sorted id pairs.
       const drawnPairs = new Set();
       function pairKey(a, b){ return a < b ? a + '|' + b : b + '|' + a; }
 
-      // For each cell, compare particles inside that cell to particles in neighboring cells
+      // neighbor scanning
       for (const [key, cellParticles] of grid) {
         const [gx, gy] = key.split(',').map(Number);
-
         for (const p of cellParticles) {
-          // initialize per-frame counter
           p._conn = 0;
-          // check neighbor cells (including own)
           for (let dxCell = -1; dxCell <= 1; dxCell++) {
             for (let dyCell = -1; dyCell <= 1; dyCell++) {
               const neighborKey = gridKey(gx + dxCell, gy + dyCell);
@@ -291,13 +289,10 @@
               if (!neighborList) continue;
               for (const q of neighborList) {
                 if (p === q) continue;
-                // limit per-particle connections
                 if (p._conn >= maxConnections) break;
                 if (q._conn !== undefined && q._conn >= maxConnections) continue;
-
                 const k = pairKey(p.id, q.id);
-                if (drawnPairs.has(k)) continue; // already drawn
-                // quick bbox check before sqrt: squared distance
+                if (drawnPairs.has(k)) continue;
                 const dxp = p.x - q.x, dyp = p.y - q.y;
                 const distSq = dxp * dxp + dyp * dyp;
                 if (distSq <= maxDistanceSq) {
@@ -316,27 +311,38 @@
         }
       }
 
-      // Draw particles (circles) after connections
+      // draw particles (with glow and occasional bursts)
       for (let p of particles) {
         const cx = p.x, cy = p.y;
-        const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, p.r * 2.5);
-        gradient.addColorStop(0, `hsla(${p.hue},100%,70%,1)`);
-        gradient.addColorStop(0.5, `hsla(${p.hue + 20},100%,60%,0.92)`);
-        gradient.addColorStop(1, `hsla(${p.hue + 40},100%,40%,0.5)`);
-        ctx.fillStyle = gradient;
+        // subtle core
+        const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, p.r * 3.0);
+        gradient.addColorStop(0, `hsla(${p.hue},100%,85%,1)`);
+        gradient.addColorStop(0.35, `hsla(${p.hue + 10},95%,70%,0.95)`);
+        gradient.addColorStop(1, `hsla(${p.hue + 30},85%,45%,0.35)`);
         ctx.beginPath();
-        ctx.arc(cx, cy, p.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // reset for next frame
+        // occasional bright bloom for dramatic effect (rare, intensity varies by token)
+        const burstChance = Math.min(0.008 + (p.token.isNFT ? 0.02 : 0), 0.06);
+        if (Math.random() < burstChance) {
+          ctx.save();
+          ctx.shadowBlur = 28;
+          ctx.shadowColor = `hsla(${p.hue},100%,70%,0.9)`;
+          ctx.fillStyle = gradient;
+          ctx.arc(cx, cy, p.r * (1.6 + Math.random() * 1.8), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.fillStyle = gradient;
+          ctx.arc(cx, cy, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
         p._conn = 0;
       }
 
-      // Optional: info text
-      if (showTokensFrame && showInfo){
-        ctx.fillStyle = '#0ff';
-        ctx.font = '22px Inter, Arial';
-        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`, 10, 80);
+      // info text
+      if (showTokensFrame && showInfo) {
+        ctx.fillStyle = 'rgba(0,255,255,0.95)';
+        ctx.font = '20px Inter, Arial';
+        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`, 12, 72);
       }
     }
 
@@ -482,9 +488,7 @@
 
         running=false; progressBar.style.transform='scaleX(1)'; statusMsg.textContent='Visualization running!';
         hideProgressSmooth();
-        // start measuring FPS & animate
-        startFPSMonitoring();
-        animate();
+        startFPSMonitoring(); animate();
       }catch(e){ running=false; hideProgressSmooth(); console.error(e); statusMsg.textContent='Error rendering visualization.'; alert('Render failed. Check console.'); }
     }
 
@@ -495,10 +499,7 @@
       const delta = now - lastFrameTime;
       lastFrameTime = now;
 
-      // do not throttle here — drawFrame will be efficient
       drawFrame(frame, true);
-
-      // record FPS
       fpsTick(now);
 
       animRequest = requestAnimationFrame(() => animate(frame + 1));
@@ -508,7 +509,6 @@
     // FPS utilities
     function fpsTick(ts){
       fpsMeasurements.push(ts);
-      // keep last 1s
       const thresh = ts - 1000;
       while(fpsMeasurements.length && fpsMeasurements[0] < thresh) fpsMeasurements.shift();
       const fps = fpsMeasurements.length;
@@ -524,19 +524,18 @@
       if(fpsMonitorInterval) return;
       fpsMonitorInterval = setInterval(()=>{
         const fps = getMeasuredFPS();
-        // adapt particle count or connection limits if slow
         if(fps < 30){
-          // reduce particle count moderately
-          if(initialParticles.length > 50){
-            initialParticles = initialParticles.slice(0, Math.max(50, Math.floor(initialParticles.length * 0.9)));
+          if(initialParticles.length > 60){
+            initialParticles = initialParticles.slice(0, Math.max(60, Math.floor(initialParticles.length * 0.88)));
             particles = cloneParticles();
           }
-          maxConnectionsBase = Math.max(1, Math.round(maxConnectionsBase * 0.85));
+          maxConnectionsBase = Math.max(1, Math.round(maxConnectionsBase * 0.8));
+          gridSizeBase = Math.min(220, Math.round(gridSizeBase * 1.05));
         } else if (fps > 50) {
-          // allow modest growth back (but capped)
-          maxConnectionsBase = Math.min(8, maxConnectionsBase + 0.5);
+          maxConnectionsBase = Math.min(10, maxConnectionsBase + 0.4);
+          gridSizeBase = Math.max(110, Math.round(gridSizeBase * 0.98));
         }
-      }, 1200);
+      }, 1000);
     }
     function stopFPSMonitoring(){ if(fpsMonitorInterval) clearInterval(fpsMonitorInterval); fpsMonitorInterval = null; }
 
@@ -619,13 +618,11 @@
     }
 
     recordBtn.addEventListener('click',()=>startRecording(true));
-
-    // Optional: click handlers for dropdown (kept but not used heavily)
     dropdownClose.addEventListener('click', ()=>{ recordDropdown.style.display='none'; overlay.style.display='none'; });
     recordWithTokensBtn.addEventListener('click', ()=>{ recordDropdown.style.display='none'; overlay.style.display='none'; startRecording(true); });
     recordWithoutTokensBtn.addEventListener('click', ()=>{ recordDropdown.style.display='none'; overlay.style.display='none'; startRecording(false); });
 
-    // ===== Misc safety: catch global errors gracefully =====
+    // global error handlers
     window.addEventListener('error', (e) => { console.error('Global error:', e); statusMsg.textContent = 'An error occurred. Check console.'; });
     window.addEventListener('unhandledrejection', (e) => { console.error('Unhandled rejection:', e); statusMsg.textContent = 'A promise was rejected. Check console.'; });
 
@@ -633,6 +630,7 @@
   </script>
 </body>
 </html>
+
 
 
 
