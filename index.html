@@ -227,7 +227,7 @@
           if(p===p2) return;
           if(Math.random()>0.8) return;
           const dx=p.cx-p2.cx, dy=p.cy-p2.cy, dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<200){
+          if(dist<120){
             const balance1 = p.token?Math.min(p.token.balance,20):1;
             const balance2 = p2.token?Math.min(p2.token.balance,20):1;
             const avgBalance=(balance1+balance2)/40;
