@@ -49,6 +49,7 @@
       overflow-y:auto;
       padding:10px;
       color:#fff;
+      font-family:'Inter',Arial,sans-serif;
       font-size:14px;
       z-index:15;
     }
@@ -159,83 +160,27 @@
     function hashStringToInt(str,mod=1000){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;} return h%mod; }
     function seededRandomFloat(seedStr){ return hashStringToInt(seedStr,10000)/10000; }
 
-    // ===== 3D Hybrid Particles =====
-    const FOCAL_LENGTH = 600; // perspektīva
-
+    // ===== Particles =====
     async function initParticlesOnce(){
       initialParticles=[];
-      // Izvēlamies particleCount dinamiski, bet ierobežojam līdz komfortablai robežai
-      const particleCount = Math.min(400, 50 + (tokens.length || 0) * 10); // ļaus vairāk, ja vajag
+      const particleCount = Math.min(150,50+(tokens.length||0)*15);
       const seedBase = (account||'')+String(ethBalance)+String(txCount);
       for(let i=0;i<particleCount;i++){
-        const t = tokens.length ? tokens[i % tokens.length] : {balance:1,address:String(i),symbol:'T'};
+        const t = tokens.length ? tokens[i%tokens.length] : {balance:1,address:String(i),symbol:'T'};
         const balanceFactor = t.isNFT ? 1 : Math.min(t.balance||0,20)/20;
         let hue = hashStringToInt((t.address||'')+seedBase+i)%360;
         const ethFactor = Math.min(ethBalance/10,1); hue=(hue+ethFactor*100)%360;
         const speed=0.005+0.01*(hashStringToInt((t.symbol||t.address)+seedBase+i,10)/10);
         const r=t.isNFT?10:2+6*balanceFactor;
-
-        // 3D Hybrid
-        const angle = seededRandomFloat(seedBase+i+'angle')*2*Math.PI;
-        const radius = 50 + seededRandomFloat(seedBase+i+'radius')*400;
-        const z = seededRandomFloat(seedBase+i+'z')*600 - 300; // -300..300
-
-        const isHybrid = i % 3 === 0; // 1/3 particles drift
-        initialParticles.push({
-          id: i,
-          angle, radius, r, hue, speed, token: t,
-          z, zSpeed:(isHybrid?0.5*(Math.random()-0.5):0), isHybrid
-        });
+        const angle=seededRandomFloat(seedBase+i+'angle')*2*Math.PI;
+        const radius=50+seededRandomFloat(seedBase+i+'radius')*400;
+        initialParticles.push({angle,radius,r,hue,speed,token:t});
       }
     }
-    function cloneParticles(){ return initialParticles.map(p=>({ ...p })); }
+    function cloneParticles(){ return initialParticles.map(p=>({...p})); }
 
-    // ===== Spatial Grid Setup =====
-    const GRID_SIZE = 160; // pixels — nedaudz lielāks, lai tīkls nebūtu pārāk smalks
-    let spatialGrid = {};
-    let gridCols = 0, gridRows = 0;
-    function initSpatialGrid(W,H){
-      gridCols = Math.max(1, Math.ceil(W/GRID_SIZE));
-      gridRows = Math.max(1, Math.ceil(H/GRID_SIZE));
-      spatialGrid = {};
-      for(let x=0;x<gridCols;x++){
-        for(let y=0;y<gridRows;y++){
-          spatialGrid[`${x},${y}`]=[];
-        }
-      }
-    }
-    function updateSpatialGrid(particles){
-      for(let key in spatialGrid) spatialGrid[key]=[];
-      particles.forEach((p)=>{
-        const col = Math.floor((p.cx || 0)/GRID_SIZE);
-        const row = Math.floor((p.cy || 0)/GRID_SIZE);
-        const clampedCol = Math.max(0, Math.min(col, gridCols-1));
-        const clampedRow = Math.max(0, Math.min(row, gridRows-1));
-        const key = `${clampedCol},${clampedRow}`;
-        spatialGrid[key].push(p);
-      });
-    }
-    function getNeighborParticles(col,row){
-      let neighbors = [];
-      for(let dx=-1;dx<=1;dx++){
-        for(let dy=-1;dy<=1;dy++){
-          const key = `${col+dx},${row+dy}`;
-          if(spatialGrid[key]) neighbors.push(...spatialGrid[key]);
-        }
-      }
-      return neighbors;
-    }
-
-    // Dynamiska max savienojumu skaita funkcija
-    function getMaxConnections() {
-      // vairāk daļiņu -> mazāk savienojumu uz daļiņu
-      if (particles.length <= 80) return 6;
-      if (particles.length <= 180) return 4;
-      if (particles.length <= 320) return 2;
-      return 1;
-    }
-
-    function drawFrame(frame, showTokensFrame){
+    // ===== Draw frame =====
+    function drawFrame(frame,showTokensFrame){
       const dpr = window.devicePixelRatio || 1;
       const scale = isMobile ? 0.6 : 1;
       const W = canvas.width/(dpr*scale);
@@ -244,108 +189,36 @@
       ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
       const cx0=W/2, cy0=H/2;
 
-      // Update particle positions & projected coordinates
-      particles.forEach(p=>{
-        if(p.isHybrid){
-          p.angle += p.speed;
-          p.z += p.zSpeed;
-          if(p.z>600) p.z=-300; if(p.z<-300) p.z=600;
-        } else {
-          p.angle += p.speed;
+      for(let i=0;i<particles.length;i++){
+        for(let j=i+1;j<particles.length;j++){
+          const p1=particles[i], p2=particles[j];
+          const x1=cx0+Math.cos(p1.angle)*p1.radius;
+          const y1=cy0+Math.sin(p1.angle)*p1.radius;
+          const x2=cx0+Math.cos(p2.angle)*p2.radius;
+          const y2=cy0+Math.sin(p2.angle)*p2.radius;
+          const dx=x1-x2, dy=y1-y2;
+          const dist=Math.sqrt(dx*dx+dy*dy);
+          if(dist<200){
+            const avgBalance=(Math.min(p1.token.balance,20)+Math.min(p2.token.balance,20))/40;
+            const alpha=0.2+0.4*avgBalance*(1-dist/200);
+            ctx.lineWidth=1.5+2*avgBalance;
+            const txFactor=Math.log(txCount+1)/10;
+            const hue=(p1.hue+p2.hue)/2+frame*0.4*txFactor;
+            ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
+            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+          }
         }
-        const scaleFactor = FOCAL_LENGTH / (FOCAL_LENGTH + p.z);
-        p.cx = cx0 + Math.cos(p.angle) * p.radius * scaleFactor;
-        p.cy = cy0 + Math.sin(p.angle) * p.radius * scaleFactor;
-        p.rScreen = Math.max(0.6, p.r * scaleFactor);
-        p._depthScale = scaleFactor; // saglabājam dziļumu, lai izmantotu alfa modā
-      });
+      }
 
-      initSpatialGrid(W,H);
-      updateSpatialGrid(particles);
-
-      // Draw connections but retināti: tikai k tuvākie no apkārtējām šūnām
-      const maxConn = getMaxConnections();
       particles.forEach(p=>{
-        const col = Math.floor(p.cx/GRID_SIZE);
-        const row = Math.floor(p.cy/GRID_SIZE);
-        const neighbors = getNeighborParticles(col,row);
-
-        // compute distance squared to neighbors, filter self
-        const near = neighbors
-          .filter(n => n !== p)
-          .map(n => {
-            const dx = p.cx - n.cx;
-            const dy = p.cy - n.cy;
-            return { n, d2: dx*dx + dy*dy };
-          })
-          .sort((a,b) => a.d2 - b.d2);
-
-        // slice only few nearest neighbors
-        const selected = near.slice(0, Math.min(maxConn * 2, near.length)); // take some extra to then probabilistically thin
-
-        let drawn = 0;
-        for(let k=0;k<selected.length && drawn < maxConn;k++){
-          const item = selected[k];
-          const n = item.n;
-          const dist = Math.sqrt(item.d2);
-          if(dist > 200) continue; // max connection radius
-          // probabilistic thinning by distance and depth (farther = less likely)
-          const distanceFactor = 1 - (dist / 200); // 1..0
-          const depthFactor = (p._depthScale + (n._depthScale || p._depthScale)) / 2; // nearer -> bigger
-          const prob = distanceFactor * (0.5 + 0.5 * depthFactor); // 0..1
-          // add a tiny seeded randomness to avoid uniform patterns
-          const rnd = Math.random();
-          if(rnd > prob) continue;
-
-          // avoid double-drawing (draw only when p.id < n.id)
-          if(p.id >= n.id) continue;
-
-          // stroke style varies with avg depth and token balance
-          const avgBalance = (Math.min(p.token.balance||0,20) + Math.min(n.token.balance||0,20)) / 40;
-          const alpha = (0.18 + 0.4 * avgBalance) * distanceFactor * depthFactor;
-          const txFactor = Math.log(txCount+1)/10;
-          const hue = ((p.hue + n.hue)/2 + frame * 0.2 * txFactor) % 360;
-          ctx.lineWidth = Math.max(1.2, 1.6 + avgBalance * 2.1) * Math.min(1.6, depthFactor + 0.4);
-          ctx.strokeStyle = `hsla(${hue},78%,70%,${Math.max(0.06, alpha)})`;
-          ctx.beginPath();
-          ctx.moveTo(p.cx, p.cy);
-          ctx.lineTo(n.cx, n.cy);
-          ctx.stroke();
-          drawn++;
-        }
-      });
-
-      // Draw particles
-      particles.forEach(p=>{
-        // soft halo by drawing a faded circle behind
-        const haloRadius = p.rScreen * 3.0;
-        ctx.globalCompositeOperation = 'lighter';
-        const grad = ctx.createRadialGradient(p.cx, p.cy, 0, p.cx, p.cy, haloRadius);
-        grad.addColorStop(0, `hsla(${p.hue},90%,60%,0.12)`);
-        grad.addColorStop(0.6, `hsla(${p.hue},80%,50%,0.06)`);
-        grad.addColorStop(1, `rgba(0,0,0,0)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(p.cx, p.cy, haloRadius, 0, Math.PI*2);
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
-
-        // main particle
-        const gradient = ctx.createRadialGradient(p.cx, p.cy, 0, p.cx, p.cy, p.rScreen * 2.2);
-        gradient.addColorStop(0, `hsla(${p.hue},100%,72%,1)`);
-        gradient.addColorStop(0.5, `hsla(${p.hue+18},85%,60%,0.9)`);
-        gradient.addColorStop(1, `hsla(${p.hue+36},70%,45%,0.45)`);
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(p.cx, p.cy, p.rScreen, 0, Math.PI*2);
-        ctx.fill();
-
-        // subtle rim to add pop
-        ctx.lineWidth = 0.6;
-        ctx.strokeStyle = `rgba(255,255,255,${0.06 * p._depthScale})`;
-        ctx.beginPath();
-        ctx.arc(p.cx, p.cy, p.rScreen, 0, Math.PI*2);
-        ctx.stroke();
+        p.angle+=p.speed;
+        const cx=cx0+Math.cos(p.angle)*p.radius;
+        const cy=cy0+Math.sin(p.angle)*p.radius;
+        const gradient=ctx.createRadialGradient(cx,cy,0,cx,cy,p.r*2.5);
+        gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
+        gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
+        gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
+        ctx.fillStyle=gradient; ctx.beginPath(); ctx.arc(cx,cy,p.r,0,Math.PI*2); ctx.fill();
       });
 
       if(showTokensFrame && showInfo){
@@ -357,10 +230,7 @@
 
     // ===== Token UI =====
     function updateTokenListUI() {
-      if(!tokens || tokens.length===0){
-        tokenListContent.innerHTML='<tr><td colspan="2" style="color:#777;">No tokens</td></tr>';
-        return;
-      }
+      if(!tokens || tokens.length===0){ tokenListContent.innerHTML='<tr><td colspan="2" style="color:#777;">No tokens</td></tr>'; return; }
       tokenListContent.innerHTML='';
       tokens.forEach(t=>{
         const tr=document.createElement('tr');
@@ -575,7 +445,7 @@
       };
 
       function cleanup(){
-        try{ if(recorder && recorder.state==='recording') recorder.stop();}catch(e){}
+        try{ if(recorder && recorder.state==='recording') recorder.stop(); }catch(e){}
         showInfo=previousShowInfo;
         document.getElementById('infoText').textContent=showInfo?'Info':'Hidden';
         tokenListContainer.style.display=showInfo?'block':'none';
@@ -587,10 +457,35 @@
     }
 
     recordBtn.addEventListener('click',()=>startRecording(true));
-
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
