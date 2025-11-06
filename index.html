@@ -258,7 +258,7 @@
           const dx = p.cx - p2.cx;
           const dy = p.cy - p2.cy;
           const dist = Math.sqrt(dx*dx + dy*dy);
-          if(dist<200){
+          if(dist<120){
             const avgBalance=(Math.min(p.token.balance,20)+Math.min(p2.token.balance,20))/40;
             const alpha=0.2+0.4*avgBalance*(1-dist/200);
             ctx.lineWidth=1.5+2*avgBalance;
