@@ -305,7 +305,7 @@
           const alpha = (0.18 + 0.4 * avgBalance) * distanceFactor * depthFactor;
           const txFactor = Math.log(txCount+1)/10;
           const hue = ((p.hue + n.hue)/2 + frame * 0.2 * txFactor) % 360;
-          ctx.lineWidth = Math.max(0.8, 1.2 + avgBalance * 2) * Math.min(1.6, depthFactor + 0.4);
+          ctx.lineWidth = Math.max(1.2, 1.6 + avgBalance * 2.1) * Math.min(1.6, depthFactor + 0.4);
           ctx.strokeStyle = `hsla(${hue},78%,70%,${Math.max(0.06, alpha)})`;
           ctx.beginPath();
           ctx.moveTo(p.cx, p.cy);
