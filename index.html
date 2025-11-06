@@ -230,97 +230,61 @@
       ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
       const cx0=W/2, cy0=H/2;
 
-      // ===== Update particle positions & draw connections =====
-function drawFrame(frame = 0, showTokensFrame = true) {
-  const dpr = window.devicePixelRatio || 1;
-  const scale = isMobile ? 0.6 : 1;
-  const W = canvas.width / (dpr * scale);
-  const H = canvas.height / (dpr * scale);
+      // Update particle positions & projected coordinates
+      particles.forEach(p=>{
+        if(p.isHybrid){
+          p.angle += p.speed;
+          p.z += p.zSpeed;
+          if(p.z>600) p.z=-300; if(p.z<-300) p.z=600;
+        } else {
+          p.angle += p.speed;
+        }
+        const scaleFactor = FOCAL_LENGTH / (FOCAL_LENGTH + p.z);
+        p.cx = cx0 + Math.cos(p.angle)*p.radius*scaleFactor;
+        p.cy = cy0 + Math.sin(p.angle)*p.radius*scaleFactor;
+        p.rScreen = p.r * scaleFactor;
+      });
 
-  // Clear canvas
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H);
+      initSpatialGrid(W,H);
+      updateSpatialGrid(particles);
 
-  const cx0 = W / 2;
-  const cy0 = H / 2;
+      // Draw connections using spatial grid
+      particles.forEach(p=>{
+        const col = Math.floor(p.cx/GRID_SIZE);
+        const row = Math.floor(p.cy/GRID_SIZE);
+        const neighbors = getNeighborParticles(col,row);
+        neighbors.forEach(p2=>{
+          if(p===p2) return;
+          const dx = p.cx - p2.cx;
+          const dy = p.cy - p2.cy;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if(dist<200){
+            const avgBalance=(Math.min(p.token.balance,20)+Math.min(p2.token.balance,20))/40;
+            const alpha=0.2+0.4*avgBalance*(1-dist/200);
+            ctx.lineWidth=1.5+2*avgBalance;
+            const txFactor=Math.log(txCount+1)/10;
+            const hue=(p.hue+p2.hue)/2+frame*0.4*txFactor;
+            ctx.strokeStyle=`hsla(${hue},100%,70%,${alpha})`;
+            ctx.beginPath(); ctx.moveTo(p.cx,p.cy); ctx.lineTo(p2.cx,p2.cy); ctx.stroke();
+          }
+        });
+      });
 
-  // ===== Update particle positions =====
-  particles.forEach(p => {
-    if (p.isHybrid) {
-      p.angle += p.speed;
-      p.z += p.zSpeed;
-      if (p.z > 600) p.z = -300;
-      if (p.z < -300) p.z = 600;
-    } else {
-      p.angle += p.speed;
-    }
+      // Draw particles
+      particles.forEach(p=>{
+        const gradient=ctx.createRadialGradient(p.cx,p.cy,0,p.cx,p.cy,p.rScreen*2.5);
+        gradient.addColorStop(0,`hsla(${p.hue},100%,70%,1)`);
+        gradient.addColorStop(0.5,`hsla(${p.hue+20},100%,60%,0.9)`);
+        gradient.addColorStop(1,`hsla(${p.hue+40},100%,40%,0.5)`);
+        ctx.fillStyle=gradient; ctx.beginPath(); ctx.arc(p.cx,p.cy,p.rScreen,0,Math.PI*2); ctx.fill();
+      });
 
-    const scaleFactor = FOCAL_LENGTH / (FOCAL_LENGTH + p.z);
-    p.cx = cx0 + Math.cos(p.angle) * p.radius * scaleFactor;
-    p.cy = cy0 + Math.sin(p.angle) * p.radius * scaleFactor;
-    p.rScreen = p.r * scaleFactor;
-  });
-
-  // ===== Update spatial grid =====
-  initSpatialGrid(W, H);
-  updateSpatialGrid(particles);
-
-  // ===== Draw connections using spatial grid =====
-  particles.forEach(p => {
-    const col = Math.floor(p.cx / GRID_SIZE);
-    const row = Math.floor(p.cy / GRID_SIZE);
-    const neighbors = getNeighborParticles(col, row);
-
-    neighbors.forEach(p2 => {
-      if (p === p2) return; // pats sevī ne savieno
-      if (Math.random() > 0.8) return; // retinām savienojumus (20% tiek uzzīmēti)
-
-      const dx = p.cx - p2.cx;
-      const dy = p.cy - p2.cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < 200) {
-        const balance1 = p.token ? Math.min(p.token.balance, 20) : 1;
-        const balance2 = p2.token ? Math.min(p2.token.balance, 20) : 1;
-        const avgBalance = (balance1 + balance2) / 40;
-
-        const alpha = 0.2 + 0.4 * avgBalance * (1 - dist / 200);
-        ctx.lineWidth = 1.5 + 2 * avgBalance;
-
-        const txFactor = Math.log(txCount + 1) / 10;
-        const hue = ((p.hue + p2.hue) / 2 + frame * 0.4 * txFactor) % 360;
-
-        ctx.strokeStyle = `hsla(${hue},100%,70%,${alpha})`;
-        ctx.beginPath();
-        ctx.moveTo(p.cx, p.cy);
-        ctx.lineTo(p2.cx, p2.cy);
-        ctx.stroke();
+      if(showTokensFrame && showInfo){
+        ctx.fillStyle='#0ff';
+        ctx.font='22px Inter';
+        ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`,10,80);
       }
-    });
-  });
-
-  // ===== Draw particles =====
-  particles.forEach(p => {
-    const gradient = ctx.createRadialGradient(p.cx, p.cy, 0, p.cx, p.cy, p.rScreen * 2.5);
-    gradient.addColorStop(0, `hsla(${p.hue},100%,70%,1)`);
-    gradient.addColorStop(0.5, `hsla(${p.hue + 20},100%,60%,0.9)`);
-    gradient.addColorStop(1, `hsla(${p.hue + 40},100%,40%,0.5)`);
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(p.cx, p.cy, p.rScreen, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // ===== Optional: show ETH balance text =====
-  if (showTokensFrame && showInfo) {
-    ctx.fillStyle = '#0ff';
-    ctx.font = '22px Inter';
-    ctx.fillText(`SepoliaETH: ${ethBalance.toFixed(4)}`, 10, 80);
-  }
-}
-
+    }
 
     // ===== Token UI =====
     function updateTokenListUI() {
@@ -558,6 +522,177 @@ function drawFrame(frame = 0, showTokensFrame = true) {
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
